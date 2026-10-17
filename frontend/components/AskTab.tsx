@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { DocumentPage, AnswerItem } from "@/types";
-import { askAgreementQuestion } from "@/lib/api";
+import { ask } from "@/lib/api";
 import { PRESET_BREAK_IT_QUESTIONS } from "@/lib/sampleData";
 import { Send, ShieldCheck, AlertCircle, ArrowUpRight, Sparkles } from "lucide-react";
 
@@ -28,7 +28,8 @@ export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
     setAskedQuestion(q);
 
     try {
-      const response = await askAgreementQuestion(q, pages);
+      const fullText = pages.map((p) => p.text).join("\n\n");
+      const response = await ask(q, fullText);
       setCurrentAnswer(response);
       if (response.quotes && response.quotes.length > 0) {
         onSelectQuote(response.quotes[0]);

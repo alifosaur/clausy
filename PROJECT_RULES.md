@@ -6,8 +6,14 @@ refused. Hackathon: Track 1, Best Use of Gemma 4, problem statement G3.
 Team: judgesnightmareee. Built 13-18 Oct 2026. Public repo, open license.
 
 ## STACK
-Next.js (App Router) + TypeScript + Tailwind + light GSAP. Deploy on Vercel.
-No Three.js, no 3D. Gemma 4 is called only from server routes. Keys in env vars.
+Frontend: Next.js (App Router) + TypeScript + Tailwind + light GSAP.
+Backend: FastAPI (Python), all Gemma 4 calls and secrets.
+No Three.js, no 3D. Keys strictly in backend environment variables.
+
+## FOLDER BOUNDARY
+frontend/ = Next.js UI only. backend/ = FastAPI, all Gemma calls and secrets.
+They talk only via the HTTP contract (GET /health, POST /extract, POST /ask).
+Backend is stateless and stores nothing. Frontend never imports backend code.
 
 ## DESIGN
 - Warm paper-white bg, near-black ink, ONE accent: highlighter yellow.
