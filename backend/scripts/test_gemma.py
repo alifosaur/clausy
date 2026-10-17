@@ -23,7 +23,7 @@ from app.services.gemma import GemmaClient
 from app.services.prompts import TRANSCRIBE_SYSTEM_PROMPT
 
 
-async def test_image(image_path: str):
+async def diagnostic_test_image(image_path: str):
     path = Path(image_path)
     if not path.is_file():
         print(f"Error: File not found: {image_path}", file=sys.stderr)
@@ -47,9 +47,9 @@ async def test_image(image_path: str):
     b64_data = base64.b64encode(image_bytes).decode("utf-8")
 
     masked_key = (
-        f"{settings.GEMMA_API_KEY[:4]}...{settings.GEMMA_API_KEY[-4:]}"
-        if len(settings.GEMMA_API_KEY) > 8
-        else ("<not set>" if not settings.GEMMA_API_KEY else "***")
+        f"[PRESENT] ({len(settings.GEMMA_API_KEY)} chars)"
+        if settings.GEMMA_API_KEY
+        else "<not set>"
     )
 
     print("==================================================")
@@ -96,7 +96,7 @@ def main():
         print("Usage: python scripts/test_gemma.py <path/to/image.jpg>")
         sys.exit(1)
 
-    asyncio.run(test_image(sys.argv[1]))
+    asyncio.run(diagnostic_test_image(sys.argv[1]))
 
 
 if __name__ == "__main__":

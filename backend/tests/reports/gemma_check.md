@@ -4,15 +4,25 @@
 
 ---
 
-## 1. Summary of Execution
+## 1. Summary of Execution & Checklist
 
-Synthetic agreement image assets (clean PNG and mobile-style messy JPEG) were generated from the ground truth text in `tests/data/sample_pages.json`.
+Synthetic agreement image assets (clean PNG and mobile-style messy JPEG) were generated from ground truth text in `tests/data/sample_pages.json`.
 
-During the live check, all requests dispatched to the Google Gemini API failed immediately at the provider edge with an HTTP 429 quota exhaustion error. Because zero requests were accepted by the upstream provider:
-- **No successful model calls were completed.**
-- **No inference results or extractions are available.**
-- **No latency figures are reported** (reporting failed network roundtrip time as model inference latency is misleading).
-- **No model recommendation is made** between `gemma-4-26b-a4b-it` and `gemma-4-31b-it` until live output comparisons can be evaluated.
+Following the required sequential check protocol (stop at first failure):
+
+| Step | Action | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| **1** | `python scripts/test_gemma.py tests/assets/clean/page1.png` | **FAILED** | Reached Gemini API; failed with `QuotaNotAvailable` (HTTP 429, limit 0) |
+| **2** | `python scripts/test_gemma.py tests/assets/messy/page1.jpg` | **STOPPED** | Not executed per stop-at-first-failure policy |
+| **3** | `python scripts/transcription_check.py` (26b) | **STOPPED** | Not executed |
+| **4** | `python scripts/e2e_check.py gemma-4-26b-a4b-it` | **STOPPED** | Not executed |
+| **5** | `python scripts/e2e_check.py gemma-4-31b-it` | **STOPPED** | Not executed |
+
+### Measured Metrics
+- **Latencies (Clean vs Messy, 26b vs 31b)**: None measured. No inference calls reached execution (upstream returned 429 immediately).
+- **Verification Pass Rates & Failed Terms**: None measured (0/6 terms evaluated).
+- **Refusal Accuracy (2 Unanswerable Questions)**: None measured (0/2 questions evaluated).
+- **Model Recommendation (26b vs 31b)**: Cannot be evaluated until an API key with non-zero quota is provided. Both models unreachable under this project quota.
 
 ---
 
