@@ -27,20 +27,20 @@ async def validate_image_file(file: UploadFile) -> bytes:
     if len(content) == 0:
         raise HTTPException(
             status_code=400,
-            detail=f"File '{file.filename}' is empty."
+            detail=f"Empty file: '{file.filename}' has 0 bytes."
         )
 
     if len(content) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=400,
-            detail=f"File '{file.filename}' exceeds the maximum allowed size of 10 MB."
+            detail=f"File too large: '{file.filename}' exceeds the maximum allowed size of 10 MB limit."
         )
 
     header = content[:8]
     if not (is_valid_jpeg(header) or is_valid_png(header)):
         raise HTTPException(
             status_code=400,
-            detail=f"File '{file.filename}' is not a valid JPEG or PNG image (invalid magic bytes signature)."
+            detail=f"Unsupported file type: '{file.filename}' is not a valid JPEG or PNG image (invalid magic bytes signature)."
         )
 
     return content
@@ -61,7 +61,7 @@ async def validate_upload_files(files: list[UploadFile]) -> list[bytes]:
     if len(files) > MAX_FILES:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many files. Maximum allowed is {MAX_FILES} pages."
+            detail=f"Too many files: maximum allowed is {MAX_FILES} pages."
         )
 
     contents: list[bytes] = []

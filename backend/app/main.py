@@ -32,9 +32,13 @@ app.add_middleware(
 # Global Exception Handlers returning friendly JSON errors (never stack traces)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    first_msg = errors[0].get("msg", "Invalid request parameters") if errors else "Invalid request parameters"
+    loc = errors[0].get("loc", []) if errors else []
+    field = loc[-1] if loc else "parameter"
     return JSONResponse(
         status_code=400,
-        content={"detail": "Invalid request parameters or field length exceeded."},
+        content={"detail": f"Validation error for '{field}': {first_msg}"},
     )
 
 

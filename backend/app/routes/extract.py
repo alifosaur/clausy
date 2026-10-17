@@ -4,6 +4,7 @@ from app.models import ExtractResponse, DocumentPage, Term, Flag
 from app.core.config import settings
 from app.core.ratelimit import limiter
 from app.core.validate import validate_upload_files
+from app.core.image_proc import optimize_image
 from app.services.verify import verify_quote
 from app.services.gemma import gemma_client
 
@@ -145,7 +146,7 @@ async def extract_agreement(
     Calls Gemma 4 TRANSCRIBE and ANALYZE or returns mock responses if MOCK_MODE is enabled.
     """
     # 1. Run strict file validation
-    await validate_upload_files(files)
+    validated_contents = await validate_upload_files(files)
 
     # 2. Return mock data when MOCK_MODE is active
     if settings.MOCK_MODE:
@@ -157,14 +158,13 @@ async def extract_agreement(
             pages=MOCK_EXTRACT_PAGES,
         )
 
-    # 3. Read image files for multimodal Gemma 4 call
+    # 3. Optimize and encode image files for multimodal Gemma 4 call
     images = []
-    for f in files:
-        content = await f.read()
-        mime_type = f.content_type or "image/jpeg"
+    for raw_content in validated_contents:
+        opt_bytes, opt_mime = optimize_image(raw_content, max_longest_side=1600, quality=85)
         images.append({
-            "mime_type": mime_type,
-            "data": base64.b64encode(content).decode("utf-8"),
+            "mime_type": opt_mime,
+            "data": base64.b64encode(opt_bytes).decode("utf-8"),
         })
 
     # 4. Step 1: TRANSCRIBE once with all page images

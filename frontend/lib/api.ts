@@ -40,10 +40,22 @@ export function categorizeError(err: unknown): CategorizedError {
       };
     }
     if (err.status === 400 || err.status === 415 || err.status === 422) {
+      let label = "Invalid Image";
+      const msg = err.message || "";
+      const lower = msg.toLowerCase();
+      if (lower.includes("unsupported") || lower.includes("magic bytes") || lower.includes("type")) {
+        label = "Unsupported Type";
+      } else if (lower.includes("too large") || lower.includes("exceeds")) {
+        label = "File Too Large";
+      } else if (lower.includes("too many")) {
+        label = "Too Many Files";
+      } else if (lower.includes("empty")) {
+        label = "Empty File";
+      }
       return {
         category: "invalid image",
-        categoryLabel: "Invalid Image",
-        message: err.message || "One or more uploaded pages could not be processed. Please check file format and size.",
+        categoryLabel: label,
+        message: msg || "One or more uploaded pages could not be processed. Please check file format and size.",
       };
     }
     if (err.status && err.status >= 500) {

@@ -93,7 +93,34 @@ async def test_post_extract_invalid_magic_bytes():
         ]
         response = await client.post("/extract", files=files)
         assert response.status_code == 400
-        assert "magic bytes" in response.json()["detail"].lower()
+        detail = response.json()["detail"].lower()
+        assert "unsupported file type" in detail or "magic bytes" in detail
+
+
+@pytest.mark.asyncio
+async def test_post_extract_empty_file():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        files = [
+            ("files", ("empty.png", b"", "image/png")),
+        ]
+        response = await client.post("/extract", files=files)
+        assert response.status_code == 400
+        assert "empty file" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_post_extract_too_large_file():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Create a header of valid JPEG followed by > 10MB of zeros
+        large_file = JPEG_SAMPLE + b"\x00" * (10 * 1024 * 1024 + 10)
+        files = [
+            ("files", ("huge.jpg", large_file, "image/jpeg")),
+        ]
+        response = await client.post("/extract", files=files)
+        assert response.status_code == 400
+        assert "file too large" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
@@ -106,3 +133,4 @@ async def test_post_extract_too_many_files():
         ]
         response = await client.post("/extract", files=files)
         assert response.status_code == 400
+        assert "too many files" in response.json()["detail"].lower()

@@ -229,7 +229,7 @@ export default function WorkspaceClient() {
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-paper-200 border border-paper-border text-ink text-[11px] font-mono uppercase tracking-wider mb-3">
           <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span>Reason: {errorInfo.category}</span>
+          <span>Reason: {errorInfo.categoryLabel || errorInfo.category}</span>
         </div>
         <h2 className="font-serif text-2xl sm:text-3xl font-normal text-ink mb-2">
           Could not read agreement
