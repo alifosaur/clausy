@@ -96,9 +96,9 @@ def evaluate_transcription(ground_truth: str, transcribed: str) -> dict:
 
 
 async def main():
-    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or "gemma-4-26b-a4b-it").strip()
+    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or ("google/gemma-4-26b-a4b-it" if settings.GEMMA_API_STYLE == "openai" else "gemma-4-26b-a4b-it")).strip()
     print("==================================================")
-    print(f"  TRANSCRIPTION CHECK (Model: {model_name})")
+    print(f"  TRANSCRIPTION CHECK (Style: {settings.GEMMA_API_STYLE}, Model: {model_name})")
     print("==================================================")
 
     with open(DATA_FILE, "r", encoding="utf-8") as f:

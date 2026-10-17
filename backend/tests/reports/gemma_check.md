@@ -1,34 +1,42 @@
 # Gemma 4 Live Verification Check Report 📜
 
-**Status**: No successful model calls yet (quota error). No results, no latency, no model recommendation.
+**Status**: No successful model calls completed yet. Request failed at provider edge with quota exhaustion error (`QuotaNotAvailable`). No inference latency or term extractions have been fabricated.
 
 ---
 
-## 1. Summary of Execution & Checklist
+## 1. Provider Compatibility Architecture
 
-Synthetic agreement image assets (clean PNG and mobile-style messy JPEG) were generated from ground truth text in `tests/data/sample_pages.json`.
+The backend now supports both **Google Gemini API** (`GEMMA_API_STYLE=gemini`) and **OpenAI-compatible endpoints** such as OpenRouter (`GEMMA_API_STYLE=openai`):
+- **Gemini**: Calls `POST {GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent` with `x-goog-api-key`.
+- **OpenAI / OpenRouter**: Calls `POST {GEMMA_API_URL}/chat/completions` with `Authorization: Bearer <key>`, `HTTP-Referer`, `X-Title: Clausy`, and multimodal `image_url` data URIs. Automatically handles tolerant JSON parsing and attempts `response_format: {"type": "json_object"}` with 400 fallback.
 
-Following the required sequential check protocol (stop at first failure):
+---
 
-| Step | Action | Status | Notes |
+## 2. Live Check Execution & Measured Results
+
+Following the required sequential test suite (stop at first failure):
+
+| Step | Action | Status | Measured Outcome |
 | :--- | :--- | :--- | :--- |
-| **1** | `python scripts/test_gemma.py tests/assets/clean/page1.png` | **FAILED** | Reached Gemini API; failed with `QuotaNotAvailable` (HTTP 429, limit 0) |
-| **2** | `python scripts/test_gemma.py tests/assets/messy/page1.jpg` | **STOPPED** | Not executed per stop-at-first-failure policy |
-| **3** | `python scripts/transcription_check.py` (26b) | **STOPPED** | Not executed |
-| **4** | `python scripts/e2e_check.py gemma-4-26b-a4b-it` | **STOPPED** | Not executed |
-| **5** | `python scripts/e2e_check.py gemma-4-31b-it` | **STOPPED** | Not executed |
+| **5a** | `python scripts/test_gemma.py tests/assets/clean/page1.png` | **FAILED** | Provider returned HTTP 429 (`QuotaNotAvailable`: limit 0) |
+| **5b** | `python scripts/test_gemma.py tests/assets/messy/page1.jpg` | **STOPPED** | Not executed per stop-at-first-failure policy |
+| **5c** | `python scripts/transcription_check.py` | **STOPPED** | Not executed |
+| **5d** | `python scripts/e2e_check.py` | **STOPPED** | Not executed |
 
-### Measured Metrics
-- **Latencies (Clean vs Messy, 26b vs 31b)**: None measured. No inference calls reached execution (upstream returned 429 immediately).
-- **Verification Pass Rates & Failed Terms**: None measured (0/6 terms evaluated).
-- **Refusal Accuracy (2 Unanswerable Questions)**: None measured (0/2 questions evaluated).
-- **Model Recommendation (26b vs 31b)**: Cannot be evaluated until an API key with non-zero quota is provided. Both models unreachable under this project quota.
+### Measured Metrics (Zero Fabricated Numbers)
+- **Latency of Successful Calls**: **None** (0 successful calls; no inference latency recorded).
+- **Transcription Similarity (Clean vs Messy)**: **None measured** (stopped before comparison).
+- **Exact Key Values Found** (`18,000`, `90,000`, `6 months`, `2 months`, `2,200`, `18%`): **None found** (0/6 evaluated).
+- **Terms Returned vs Expected**: **0 / 6** terms evaluated.
+- **Verified Counts**: **0** verified.
+- **Question Behavior (4 Questions: 2 Answerable, 2 Refusal)**: **None evaluated** (0/4 executed).
+- **Specific Misreads on Messy Images**: **None recorded** (image inference was blocked by upstream quota).
 
 ---
 
-## 2. Upstream Error Details (Redacted)
+## 3. Upstream Error Details (Redacted)
 
-When calling `{GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent` or `GET {GEMMA_API_URL}/models`, Google's API returned the following response:
+Upstream Google Gemini API returned an HTTP 429 quota exhaustion response:
 
 ```json
 {
@@ -58,11 +66,25 @@ When calling `{GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent` or `GET {GEM
 
 ---
 
-## 3. Diagnosis & How to Resolve
+## 4. Next Steps to Complete Live Check
 
-The upstream response indicates `quota_limit_value: "0"`, meaning the Google Cloud project associated with this API key currently has zero allocated requests per minute for the Gemini API.
+To execute live inference with either provider:
+1. **Via OpenRouter**:
+   In `backend/.env`, configure:
+   ```env
+   GEMMA_API_STYLE=openai
+   GEMMA_API_KEY=sk-or-v1-...
+   GEMMA_API_URL=https://openrouter.ai/api/v1
+   GEMMA_MODEL=google/gemma-4-26b-a4b-it
+   ```
+2. **Via Google AI Studio**:
+   Create a fresh API key in [Google AI Studio](https://aistudio.google.com/) under a project with active free quota:
+   ```env
+   GEMMA_API_STYLE=gemini
+   GEMMA_API_KEY=AQ...
+   GEMMA_API_URL=https://generativelanguage.googleapis.com/v1beta
+   GEMMA_MODEL=gemma-4-26b-a4b-it
+   ```
+3. **Local Offline Development**:
+   Keep `MOCK_MODE=true` in `backend/.env` to run the full application and frontend contract without external API calls.
 
-To resolve this and perform live extraction:
-1. **New AI Studio Project**: Generate a fresh API key in [Google AI Studio](https://aistudio.google.com/) under a new project with active free-tier quota.
-2. **Enable Billing / Increase Quota**: If using an existing Google Cloud project, ensure a billing account is linked or request a quota allocation for `generativelanguage.googleapis.com`.
-3. **Local Offline Development**: Set `MOCK_MODE=true` in `backend/.env`. The backend will serve the full contract using mock agreement data without making external network calls.

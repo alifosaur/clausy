@@ -262,7 +262,7 @@ class E2ERunner:
 
 
 async def main():
-    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or "gemma-4-26b-a4b-it").strip()
+    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or ("google/gemma-4-26b-a4b-it" if settings.GEMMA_API_STYLE == "openai" else "gemma-4-26b-a4b-it")).strip()
     if len(sys.argv) > 1:
         model_name = sys.argv[1]
 
@@ -270,7 +270,8 @@ async def main():
     results = await runner.execute_suite()
 
     # Save summary json
-    out_file = BACKEND_DIR / "tests" / "reports" / f"e2e_{model_name.replace('-', '_')}.json"
+    sanitized_model = model_name.replace("/", "_").replace("-", "_")
+    out_file = BACKEND_DIR / "tests" / "reports" / f"e2e_{sanitized_model}.json"
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)

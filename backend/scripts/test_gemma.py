@@ -57,11 +57,12 @@ async def diagnostic_test_image(image_path: str):
     print("==================================================")
     print(f"Image File  : {path.name} ({len(image_bytes) / 1024:.1f} KB)")
     print(f"MIME Type   : {mime_type}")
-    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or "gemma-4-26b-a4b-it").strip()
+    model_name = (os.getenv("GEMMA_MODEL") or settings.GEMMA_MODEL or ("google/gemma-4-26b-a4b-it" if settings.GEMMA_API_STYLE == "openai" else "gemma-4-26b-a4b-it")).strip()
+    print(f"API Style   : {settings.GEMMA_API_STYLE}")
     print(f"Model       : {model_name}")
     print(f"API Key     : {masked_key}")
     print("--------------------------------------------------")
-    print("Sending transcription request to Gemini API...")
+    print("Sending transcription request to AI service...")
 
     client = GemmaClient(model=model_name)
     parts = [

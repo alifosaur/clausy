@@ -48,6 +48,36 @@ class QuotaNotAvailable(GemmaError):
         return self.internal_reason
 
 
+class ApiKeyRejected(GemmaError):
+    """Raised when the provider rejects the API key (401/403)."""
+    def __init__(
+        self,
+        internal_reason: str = "API key rejected",
+        detail: str = "Authentication failed with the AI service. Please check server configuration.",
+        status_code: int = 401,
+    ):
+        super().__init__(detail=detail, status_code=status_code)
+        self.internal_reason = internal_reason
+
+    def __str__(self) -> str:
+        return self.internal_reason
+
+
+class ProviderCreditsExhausted(GemmaError):
+    """Raised when provider balance or credits are exhausted (402)."""
+    def __init__(
+        self,
+        internal_reason: str = "Provider credits exhausted",
+        detail: str = "AI service credits exhausted. Please try again later.",
+        status_code: int = 402,
+    ):
+        super().__init__(detail=detail, status_code=status_code)
+        self.internal_reason = internal_reason
+
+    def __str__(self) -> str:
+        return self.internal_reason
+
+
 class JsonParseError(Exception):
     """Raised when JSON parsing fails even after tolerant extraction."""
     pass
@@ -114,24 +144,30 @@ def parse_json_tolerant(raw_text: str) -> dict[str, Any] | list[Any]:
 
 class GemmaClient:
     """
-    Async client for Google's Gemini API calling Gemma 4.
-    Calls {GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent with header x-goog-api-key.
+    Async client supporting both Google Gemini API and OpenAI-compatible providers (such as OpenRouter).
+    Configured via GEMMA_API_STYLE ("gemini" | "openai").
     """
 
     def __init__(
         self,
+        api_style: str | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
         model: str | None = None,
         timeout: float = 60.0,
     ):
+        style = (api_style or getattr(settings, "GEMMA_API_STYLE", "gemini")).strip().lower()
+        self.api_style = "openai" if style == "openai" else "gemini"
         self.api_key = api_key or settings.GEMMA_API_KEY
         self.api_url = (api_url or settings.GEMMA_API_URL).rstrip("/")
-        self.model = model or settings.GEMMA_MODEL or "gemma-4-26b-a4b-it"
-        self.timeout = timeout
-        self.supports_json_mime = True
 
-    def _build_payload(self, parts: list[dict[str, Any]], use_json_mime: bool) -> dict[str, Any]:
+        default_model = "google/gemma-4-26b-a4b-it" if self.api_style == "openai" else "gemma-4-26b-a4b-it"
+        self.model = (model or settings.GEMMA_MODEL or default_model).strip()
+        self.timeout = timeout
+        self.supports_json_mime = True      # for gemini
+        self.supports_json_object = True    # for openai
+
+    def _build_gemini_payload(self, parts: list[dict[str, Any]], use_json_mime: bool) -> dict[str, Any]:
         generation_config: dict[str, Any] = {"temperature": 0.1}
         if use_json_mime:
             generation_config["responseMimeType"] = "application/json"
@@ -145,12 +181,9 @@ class GemmaClient:
             "generationConfig": generation_config,
         }
 
-    async def generate_content(self, parts: list[dict[str, Any]]) -> str:
+    async def _generate_gemini(self, parts: list[dict[str, Any]]) -> str:
         """
         Sends parts to {GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent.
-        Retries once on 429/5xx with backoff.
-        Falls back to prompting without responseMimeType if 400 is returned.
-        Never logs prompt contents, documents, or keys.
         """
         if not self.api_key:
             raise GemmaError(
@@ -167,7 +200,7 @@ class GemmaClient:
         use_json_mime = self.supports_json_mime
 
         for attempt in range(2):
-            payload = self._build_payload(parts, use_json_mime=use_json_mime)
+            payload = self._build_gemini_payload(parts, use_json_mime=use_json_mime)
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.post(url, headers=headers, json=payload)
@@ -190,6 +223,12 @@ class GemmaClient:
                     use_json_mime = False
                     continue
 
+                if response.status_code in (401, 403):
+                    raise ApiKeyRejected(status_code=response.status_code)
+
+                if response.status_code == 402:
+                    raise ProviderCreditsExhausted()
+
                 # If 429, check if the project has zero allocated quota
                 if response.status_code == 429:
                     body_lower = response.text.lower()
@@ -208,6 +247,8 @@ class GemmaClient:
                 else:
                     raise GemmaError(f"Agreement analysis failed with status {response.status_code}. Please try again.", status_code=response.status_code)
 
+            except (ApiKeyRejected, ProviderCreditsExhausted, QuotaNotAvailable, GemmaError):
+                raise
             except httpx.TimeoutException:
                 if attempt == 0:
                     await asyncio.sleep(2.0)
@@ -220,6 +261,157 @@ class GemmaClient:
                 raise GemmaError("Network error contacting the AI service. Please check connectivity.", status_code=503)
 
         raise GemmaError("Failed to communicate with the AI model after retrying.", status_code=502)
+
+    def _build_openai_content(self, parts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        content: list[dict[str, Any]] = []
+        for part in parts:
+            if "text" in part:
+                content.append({"type": "text", "text": str(part["text"])})
+            elif "inlineData" in part:
+                inline = part["inlineData"]
+                mime = inline.get("mimeType", "image/jpeg")
+                b64 = inline.get("data", "")
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                })
+            elif "inline_data" in part:
+                inline = part["inline_data"]
+                mime = inline.get("mime_type", "image/jpeg")
+                b64 = inline.get("data", "")
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                })
+            elif "image_url" in part:
+                content.append(part)
+        return content
+
+    async def _generate_openai(self, parts: list[dict[str, Any]]) -> str:
+        """
+        Sends parts to {GEMMA_API_URL}/chat/completions using OpenAI-compatible payload format.
+        """
+        if not self.api_key:
+            raise GemmaError(
+                "GEMMA_API_KEY is not configured on the server. Please set GEMMA_API_KEY or enable MOCK_MODE=true.",
+                status_code=503,
+            )
+
+        url = self.api_url if self.api_url.endswith("/chat/completions") else f"{self.api_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/alifosaur/clausy",
+            "X-Title": "Clausy",
+        }
+
+        openai_content = self._build_openai_content(parts)
+        use_json_format = self.supports_json_object
+
+        for attempt in range(2):
+            payload: dict[str, Any] = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": openai_content,
+                    }
+                ],
+                "temperature": 0,
+            }
+            if use_json_format:
+                payload["response_format"] = {"type": "json_object"}
+
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(url, headers=headers, json=payload)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    choices = data.get("choices", [])
+                    if not choices:
+                        raise GemmaError("No content returned by the AI model.", status_code=502)
+                    message = choices[0].get("message", {})
+                    raw_content = message.get("content")
+
+                    if raw_content is None:
+                        raise GemmaError("Empty response content from the AI model.", status_code=502)
+
+                    if isinstance(raw_content, list):
+                        parts_text = []
+                        for p in raw_content:
+                            if isinstance(p, dict):
+                                if p.get("type") == "text" and p.get("text"):
+                                    parts_text.append(str(p["text"]))
+                                elif "text" in p:
+                                    parts_text.append(str(p["text"]))
+                            elif isinstance(p, str):
+                                parts_text.append(p)
+                        text = "".join(parts_text).strip()
+                        if not text:
+                            raise GemmaError("Empty response content from the AI model.", status_code=502)
+                        return text
+                    elif isinstance(raw_content, str):
+                        text = raw_content.strip()
+                        if not text:
+                            raise GemmaError("Empty response content from the AI model.", status_code=502)
+                        return text
+                    else:
+                        raise GemmaError("Invalid response format from the AI model.", status_code=502)
+
+                # If 400 and we tried response_format, retry without response_format immediately
+                if response.status_code == 400 and use_json_format:
+                    self.supports_json_object = False
+                    use_json_format = False
+                    continue
+
+                if response.status_code in (401, 403):
+                    raise ApiKeyRejected(status_code=response.status_code)
+
+                if response.status_code == 402:
+                    raise ProviderCreditsExhausted()
+
+                if response.status_code == 429:
+                    body_lower = response.text.lower()
+                    if 'quota_limit_value": "0"' in body_lower or "quota_limit_value': '0'" in body_lower:
+                        raise QuotaNotAvailable()
+                    if attempt == 0:
+                        await asyncio.sleep(2.0)
+                        continue
+                    raise GemmaError("AI rate limit reached. Please wait a moment and try again.", status_code=429)
+
+                # Retry on 5xx once
+                if response.status_code in (500, 502, 503, 504) and attempt == 0:
+                    await asyncio.sleep(2.0)
+                    continue
+
+                if response.status_code >= 500:
+                    raise GemmaError("The AI service is temporarily unavailable. Please try again.", status_code=502)
+                else:
+                    raise GemmaError(f"Agreement analysis failed with status {response.status_code}. Please try again.", status_code=response.status_code)
+
+            except (ApiKeyRejected, ProviderCreditsExhausted, QuotaNotAvailable, GemmaError):
+                raise
+            except httpx.TimeoutException:
+                if attempt == 0:
+                    await asyncio.sleep(2.0)
+                    continue
+                raise GemmaError("The AI model timed out while analyzing the document. Please try again.", status_code=504)
+            except httpx.RequestError:
+                if attempt == 0:
+                    await asyncio.sleep(2.0)
+                    continue
+                raise GemmaError("Network error contacting the AI service. Please check connectivity.", status_code=503)
+
+        raise GemmaError("Failed to communicate with the AI model after retrying.", status_code=502)
+
+    async def generate_content(self, parts: list[dict[str, Any]]) -> str:
+        """
+        Dispatches content generation to the configured provider API style.
+        """
+        if self.api_style == "openai":
+            return await self._generate_openai(parts)
+        return await self._generate_gemini(parts)
 
     async def generate_json(self, parts: list[dict[str, Any]]) -> tuple[str, dict[str, Any] | list[Any]]:
         """
