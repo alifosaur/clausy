@@ -1,30 +1,30 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://clausy.vercel.app";
   const currentDate = new Date();
 
   return [
     {
-      url: baseUrl,
+      url: SITE_URL,
       lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/workspace`,
+      url: `${SITE_URL}/workspace`,
       lastModified: currentDate,
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/how-we-verify`,
+      url: `${SITE_URL}/how-we-verify`,
       lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/about`,
+      url: `${SITE_URL}/about`,
       lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.7,

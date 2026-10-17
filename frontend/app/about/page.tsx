@@ -14,12 +14,16 @@ import {
   HACKATHON_TRACK,
   PROBLEM_STATEMENT,
   GEMMA_MODEL_NAME,
+  DATA_POLICY_NOTICE,
 } from "@/lib/config";
 
 export const metadata = {
   title: "About — Clausy",
   description:
     "About Clausy: Built by team judgesnightmareee for Track 1 Best Use of Gemma 4, addressing Problem Statement G3.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 export default function AboutPage() {
@@ -164,9 +168,9 @@ export default function AboutPage() {
 
           <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
             <li>Your uploaded files are loaded into browser memory and sent over secure HTTPS directly to the hosted model.</li>
-            <li>No pages or extracted texts are stored on servers, saved to disk, or preserved in databases.</li>
-            <li>We do not sell, license, or retain your tenancy agreements for AI model re-training.</li>
-            <li>Once you leave or close your browser tab, your uploaded document state is completely wiped from memory.</li>
+            <li>No pages or extracted texts are stored on Clausy servers, saved to disk, or preserved in databases.</li>
+            <li>{DATA_POLICY_NOTICE}</li>
+            <li>Once you leave or close your browser tab, your uploaded document state is completely wiped from browser memory.</li>
           </ul>
         </div>
       </section>

@@ -24,7 +24,7 @@ const config: Config = {
           DEFAULT: "#141413",
           deep: "#0D0D0C",
           muted: "#524F49",
-          light: "#78746C",
+          light: "#66625B",
         },
         // Design tokens: highlighter-yellow accent
         highlighter: {

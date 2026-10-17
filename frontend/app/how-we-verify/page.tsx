@@ -8,13 +8,16 @@ import {
   Camera,
   Lock,
 } from "lucide-react";
-import { GEMMA_MODEL_NAME } from "@/lib/config";
+import { GEMMA_MODEL_NAME, DATA_POLICY_NOTICE } from "@/lib/config";
 import { EVAL_TEST_RESULTS, EVALUATION_NOTE } from "@/lib/evalResults";
 
 export const metadata = {
   title: "How We Verify — Clausy",
   description:
     "How Clausy pairs Gemma 4 clause extraction with deterministic code-level quote verification to eliminate hallucinations.",
+  alternates: {
+    canonical: "/how-we-verify",
+  },
 };
 
 export default function HowWeVerifyPage() {
@@ -307,10 +310,10 @@ export default function HowWeVerifyPage() {
               </p>
               <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
                 <li>
-                  <strong className="text-ink">In-Memory Processing:</strong> Uploaded images are kept in volatile memory during the active session. Nothing is written to a persistent database or permanent disk storage.
+                  <strong className="text-ink">In-Memory Session:</strong> Uploaded images are kept in volatile memory during your active reading session. Nothing is written to a persistent database or permanent disk storage.
                 </li>
                 <li>
-                  <strong className="text-ink">Zero Training on User Documents:</strong> Your rental agreements are never retained, logged for model re-training, or shared with third parties.
+                  <strong className="text-ink">Hosted Provider Notice:</strong> {DATA_POLICY_NOTICE}
                 </li>
                 <li>
                   <strong className="text-ink">Open Weights for Future Local Deployment:</strong> Because Gemma open weights are freely available, private on-device or self-hosted deployment without third-party network transmission is fully architecturally viable.

@@ -115,6 +115,7 @@ export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Ask about deposit return, notice, pets, painting, repairs..."
             maxLength={MAX_QUESTION_CHARS + 20}
+            aria-describedby="question-helper-text"
             className={`w-full px-4 py-3 pr-24 rounded-xl border bg-paper-50 text-ink placeholder:text-ink-muted/60 text-sm focus:outline-none focus:ring-2 focus:border-transparent shadow-sm ${
               isOverLimit
                 ? "border-amber-600 focus:ring-amber-600"
@@ -138,7 +139,10 @@ export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
         </div>
 
         {/* Live Character Counter */}
-        <div className="flex items-center justify-between px-1 text-[11px] font-mono">
+        <div
+          id="question-helper-text"
+          className="flex items-center justify-between px-1 text-[11px] font-mono"
+        >
           <span className="text-ink-muted">
             Ask any question. Answers cite exact clauses or refuse if unmentioned.
           </span>
@@ -156,7 +160,11 @@ export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
 
       {/* Error State */}
       {error && (
-        <div className="p-3.5 rounded-xl bg-paper-200 border border-paper-border text-xs text-ink flex items-center gap-2">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="p-3.5 rounded-xl bg-paper-200 border border-paper-border text-xs text-ink flex items-center gap-2"
+        >
           <AlertCircle className="w-4 h-4 text-ink flex-shrink-0" />
           <span>{error}</span>
         </div>

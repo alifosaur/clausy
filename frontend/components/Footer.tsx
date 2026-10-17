@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
+import { DATA_POLICY_NOTICE } from "@/lib/config";
 
 export function Footer() {
   return (
@@ -10,9 +11,7 @@ export function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-ink-muted">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-ink flex-shrink-0" />
-            <span>
-              <strong>Privacy first:</strong> Documents are processed in-memory and sent to a hosted model. Nothing is saved or stored.
-            </span>
+            <span>{DATA_POLICY_NOTICE}</span>
           </div>
           <span className="font-medium text-ink bg-highlighter-solid/60 px-2.5 py-0.5 rounded border border-paper-border">
             Not legal advice

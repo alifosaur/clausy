@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   FileCheck,
 } from "lucide-react";
-import gsap from "gsap";
 
 interface DocumentViewerProps {
   pages: DocumentPage[];
@@ -66,17 +65,20 @@ export function DocumentViewer({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (!prefersReducedMotion) {
-      gsap.fromTo(
-        highlightRef.current,
-        {
-          backgroundSize: "0% 100%",
-        },
-        {
-          backgroundSize: "100% 100%",
-          duration: 0.55,
-          ease: "power2.out",
-        }
-      );
+      import("gsap").then(({ default: gsap }) => {
+        if (!highlightRef.current) return;
+        gsap.fromTo(
+          highlightRef.current,
+          {
+            backgroundSize: "0% 100%",
+          },
+          {
+            backgroundSize: "100% 100%",
+            duration: 0.55,
+            ease: "power2.out",
+          }
+        );
+      });
     }
 
     // Smoothly scroll highlight into view within container

@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
 import { DocumentProvider } from "@/components/DocumentContext";
+import { SITE_URL } from "@/lib/config";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -44,20 +45,23 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "judgesnightmareee" }],
   creator: "Team judgesnightmareee",
-  metadataBase: new URL("https://clausy.vercel.app"),
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://clausy.vercel.app",
+    url: SITE_URL,
     title: "Clausy — AI Rental Agreement Reader for Tenants",
     description:
-      "Gemma reads your lease pages. Code verifies every quote. Answers are cited or refused. 100% private: nothing is stored.",
+      "Gemma reads your lease pages. Code verifies every quote. Clausy itself stores nothing.",
     siteName: "Clausy",
   },
   twitter: {
     card: "summary_large_image",
     title: "Clausy — AI Rental Agreement Reader for Tenants",
-    description: "Gemma reads your lease pages. Code verifies every quote. No hallucinations.",
+    description: "Gemma reads your lease pages. Code verifies every quote. Every answer is cited.",
   },
   icons: {
     icon: "/favicon.svg",
