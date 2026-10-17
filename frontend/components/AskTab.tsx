@@ -16,11 +16,12 @@ interface AskTabProps {
   pages: DocumentPage[];
   onSelectQuote: (quote: string, page?: number) => void;
   activeQuote?: string;
+  isSample?: boolean;
 }
 
 const MAX_QUESTION_CHARS = 500;
 
-export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
+export function AskTab({ pages, onSelectQuote, activeQuote, isSample = false }: AskTabProps) {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState<AnswerItem | null>(null);
@@ -37,7 +38,7 @@ export function AskTab({ pages, onSelectQuote, activeQuote }: AskTabProps) {
 
     try {
       const fullText = pages.map((p) => p.text).join("\n\n");
-      const response = await ask(q, fullText);
+      const response = await ask(q, fullText, { isSample });
       setCurrentAnswer(response);
       if (response.quotes && response.quotes.length > 0) {
         onSelectQuote(response.quotes[0]);

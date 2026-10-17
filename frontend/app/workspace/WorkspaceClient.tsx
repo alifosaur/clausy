@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDocumentFiles } from "@/components/DocumentContext";
 import { useToast } from "@/components/Toast";
-import { extract } from "@/lib/api";
+import { extract, categorizeError, CategorizedError } from "@/lib/api";
 import { verifyTerms, verifyQuoteInPages } from "@/lib/verifier";
 import { DocumentPage, TermItem, FlagItem } from "@/lib/types";
 import { DocumentViewer } from "@/components/DocumentViewer";
@@ -36,7 +36,7 @@ export default function WorkspaceClient() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadingStepText, setLoadingStepText] = useState("Reading page 1 of 3...");
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<CategorizedError | null>(null);
 
   const [pages, setPages] = useState<DocumentPage[]>([]);
   const [terms, setTerms] = useState<TermItem[]>([]);
@@ -60,7 +60,7 @@ export default function WorkspaceClient() {
     }
 
     setIsLoading(true);
-    setError(null);
+    setErrorInfo(null);
 
     const totalPages = files && files.length > 0 ? files.length : 3;
 
@@ -76,7 +76,7 @@ export default function WorkspaceClient() {
     }, 700);
 
     try {
-      const response = await extract(files && files.length > 0 ? files : undefined);
+      const response = await extract(files && files.length > 0 ? files : undefined, { isSample });
       const extractedPages = response.pages || [];
       const extractedTerms = response.terms || [];
       const extractedFlags = response.flags || [];
@@ -89,9 +89,10 @@ export default function WorkspaceClient() {
       setFlags(extractedFlags);
       setCurrentPageNumber(1);
       setActiveQuote(undefined);
+      setErrorInfo(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to extract agreement pages";
-      setError(msg);
+      const cat = categorizeError(err);
+      setErrorInfo(cat);
     } finally {
       clearTimeout(timer1);
       clearTimeout(timer2);
@@ -219,18 +220,22 @@ export default function WorkspaceClient() {
     );
   }
 
-  // 3. ERROR STATE with Retry button
-  if (error) {
+  // 3. ERROR STATE with Retry button and reason category
+  if (errorInfo) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 text-center max-w-md mx-auto">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-center mb-6 text-amber-700">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 text-center max-w-lg mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-center mb-4 text-amber-700">
           <AlertCircle className="w-7 h-7" />
         </div>
-        <h2 className="font-serif text-2xl font-normal text-ink mb-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-paper-200 border border-paper-border text-ink text-[11px] font-mono uppercase tracking-wider mb-3">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span>Reason: {errorInfo.category}</span>
+        </div>
+        <h2 className="font-serif text-2xl sm:text-3xl font-normal text-ink mb-2">
           Could not read agreement
         </h2>
-        <p className="text-xs sm:text-sm text-ink-muted mb-6 leading-relaxed">
-          {error}
+        <p className="text-xs sm:text-sm text-ink-muted mb-6 leading-relaxed max-w-md">
+          {errorInfo.message}
         </p>
         <div className="flex gap-3">
           <button
@@ -267,18 +272,24 @@ export default function WorkspaceClient() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-serif text-lg sm:text-xl font-semibold text-ink tracking-tight">
                 Rental Agreement Workspace
               </h1>
-              {isSample && (
-                <span className="text-[10px] font-mono uppercase bg-highlighter-solid/80 text-ink px-2 py-0.5 rounded font-semibold border border-highlighter-accent">
-                  Sample Agreement
+              {isSample ? (
+                <span className="text-[11px] font-mono uppercase bg-highlighter-solid/80 text-ink px-2.5 py-0.5 rounded-md font-semibold border border-highlighter-accent">
+                  Demo data (sample agreement)
+                </span>
+              ) : (
+                <span className="text-[11px] font-mono uppercase bg-paper-200 text-ink px-2.5 py-0.5 rounded-md font-semibold border border-paper-border">
+                  Read from your upload · {pages.length} {pages.length === 1 ? "page" : "pages"}
                 </span>
               )}
             </div>
             <p className="text-xs text-ink-muted">
-              Bengaluru Rental Agreement · 3 Pages · Verbatim clause verification
+              {isSample
+                ? "Bengaluru Rental Agreement · 3 Pages · Demo Sample"
+                : `Uploaded Rental Agreement · ${pages.length} Pages · Verbatim clause verification`}
             </p>
           </div>
         </div>
@@ -451,6 +462,7 @@ export default function WorkspaceClient() {
                   pages={pages}
                   onSelectQuote={handleSelectQuote}
                   activeQuote={activeQuote}
+                  isSample={isSample}
                 />
               </div>
             )}

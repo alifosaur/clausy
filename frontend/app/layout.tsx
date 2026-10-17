@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
 import { DocumentProvider } from "@/components/DocumentContext";
+import { DevBanner } from "@/components/DevBanner";
 import { SITE_URL } from "@/lib/config";
 
 const fraunces = Fraunces({
@@ -85,6 +86,9 @@ export default function RootLayout({
         {/* Document state (memory-only) and Toast notifications */}
         <DocumentProvider>
           <ToastProvider>
+            {/* Dev-only diagnostics banner */}
+            <DevBanner />
+
             {/* Global Responsive Navbar */}
             <Navbar />
 
