@@ -1,4 +1,4 @@
-import { DocumentPage, TermItem, AnswerItem, VerificationResult } from "@/types";
+import { DocumentPage, TermItem, AnswerItem, VerificationResult } from "./types";
 
 /**
  * Normalizes text by removing non-alphanumeric noise, standardizing spaces and quotes
@@ -15,8 +15,71 @@ export function normalizeForMatching(str: string): string {
 }
 
 /**
- * Verifies if a quote exists within the extracted document text.
- * Runs exact, normalized, and fuzzy token-overlap checks.
+ * Finds quote in a specific text string (normalizing whitespace and case).
+ * Returns offset positions if found.
+ */
+export function findQuoteInText(
+  quote: string,
+  text: string
+): { found: boolean; startIndex: number; endIndex: number } {
+  if (!quote || !text) return { found: false, startIndex: -1, endIndex: -1 };
+
+  const cleanQuote = quote.trim();
+  if (cleanQuote.length < 3) return { found: false, startIndex: -1, endIndex: -1 };
+
+  // 1. Exact raw match
+  const exactIndex = text.indexOf(cleanQuote);
+  if (exactIndex !== -1) {
+    return {
+      found: true,
+      startIndex: exactIndex,
+      endIndex: exactIndex + cleanQuote.length,
+    };
+  }
+
+  // 2. Case-insensitive match
+  const lowerText = text.toLowerCase();
+  const lowerQuote = cleanQuote.toLowerCase();
+  const lowerIndex = lowerText.indexOf(lowerQuote);
+  if (lowerIndex !== -1) {
+    return {
+      found: true,
+      startIndex: lowerIndex,
+      endIndex: lowerIndex + cleanQuote.length,
+    };
+  }
+
+  // 3. Normalized whitespace and punctuation match
+  const normTarget = normalizeForMatching(cleanQuote);
+  const normText = normalizeForMatching(text);
+  const normIndex = normText.indexOf(normTarget);
+  if (normIndex !== -1) {
+    return {
+      found: true,
+      startIndex: 0,
+      endIndex: text.length,
+    };
+  }
+
+  // 4. Token overlap check (threshold 80%)
+  const tokens = normTarget.split(/\s+/).filter((t) => t.length > 2);
+  if (tokens.length >= 3) {
+    const textTokens = new Set(normText.split(/\s+/));
+    const matched = tokens.filter((t) => textTokens.has(t)).length;
+    if (matched / tokens.length >= 0.8) {
+      return {
+        found: true,
+        startIndex: 0,
+        endIndex: text.length,
+      };
+    }
+  }
+
+  return { found: false, startIndex: -1, endIndex: -1 };
+}
+
+/**
+ * Verifies if a quote exists within the extracted document pages.
  */
 export function verifyQuoteInPages(
   quote: string,
@@ -33,38 +96,22 @@ export function verifyQuoteInPages(
     return { isVerified: false, matchScore: 0, matchedQuote: "" };
   }
 
-  // 1. Check page by page for exact or normalized substring match
+  // Check page by page
   for (const page of pages) {
-    const rawPageText = page.text || "";
-
-    // Exact raw match
-    const exactIndex = rawPageText.indexOf(cleanQuote);
-    if (exactIndex !== -1) {
+    const match = findQuoteInText(cleanQuote, page.text || "");
+    if (match.found) {
       return {
         isVerified: true,
         matchScore: 1.0,
         matchedQuote: cleanQuote,
         pageNumber: page.pageNumber,
-        startIndex: exactIndex,
-        endIndex: exactIndex + cleanQuote.length,
-      };
-    }
-
-    // Normalized match
-    const normalizedPage = normalizeForMatching(rawPageText);
-    const normIndex = normalizedPage.indexOf(normalizedTarget);
-    if (normIndex !== -1) {
-      // Find approximate offset in original text
-      return {
-        isVerified: true,
-        matchScore: 0.98,
-        matchedQuote: cleanQuote,
-        pageNumber: page.pageNumber,
+        startIndex: match.startIndex,
+        endIndex: match.endIndex,
       };
     }
   }
 
-  // 2. Token overlap / Sliding window matching across combined text
+  // Sliding token overlap across all pages
   const quoteTokens = normalizedTarget.split(/\s+/).filter((t) => t.length > 2);
   if (quoteTokens.length === 0) {
     return { isVerified: false, matchScore: 0, matchedQuote: "" };
@@ -75,25 +122,17 @@ export function verifyQuoteInPages(
 
   for (const page of pages) {
     const normPage = normalizeForMatching(page.text || "");
-    const pageTokens = normPage.split(/\s+/);
-    const pageTokenSet = new Set(pageTokens);
+    const pageTokens = new Set(normPage.split(/\s+/));
+    const foundCount = quoteTokens.filter((token) => pageTokens.has(token)).length;
+    const score = foundCount / quoteTokens.length;
 
-    let foundCount = 0;
-    for (const token of quoteTokens) {
-      if (pageTokenSet.has(token)) {
-        foundCount++;
-      }
-    }
-
-    const overlapScore = foundCount / quoteTokens.length;
-    if (overlapScore > bestScore) {
-      bestScore = overlapScore;
+    if (score > bestScore) {
+      bestScore = score;
       bestPage = page.pageNumber;
     }
   }
 
-  // Strict verification threshold: at least 82% token overlap
-  const isVerified = bestScore >= 0.82;
+  const isVerified = bestScore >= 0.8;
 
   return {
     isVerified,
@@ -141,7 +180,6 @@ export function verifyAnswer(
     }
   }
 
-  // If none of the cited quotes exist in the document, refuse the answer
   if (verifiedQuotes.length === 0) {
     return {
       text: "Not found in this agreement. The cited clauses could not be verified in the extracted document text.",

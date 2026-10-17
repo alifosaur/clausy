@@ -36,15 +36,15 @@ export async function health(): Promise<HealthResponse> {
  * Uploads agreement page files (JPG/PNG) for extraction.
  * POST /extract
  */
-export async function extract(files: File[]): Promise<ExtractResponse> {
-  if (!files || files.length === 0) {
-    throw new ApiError("No files provided for extraction", 400, "EMPTY_FILES");
-  }
-
+export async function extract(files?: File[]): Promise<ExtractResponse> {
   if (USE_MOCK) {
     // Simulate brief processing delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-    return getMockExtract();
+    return getMockExtract(files);
+  }
+
+  if (!files || files.length === 0) {
+    throw new ApiError("No files provided for extraction", 400, "EMPTY_FILES");
   }
 
   try {

@@ -56,6 +56,15 @@ export interface HealthResponse {
   timestamp?: string;
 }
 
+export interface VerificationResult {
+  isVerified: boolean;
+  matchScore: number;
+  matchedQuote: string;
+  pageNumber?: number;
+  startIndex?: number;
+  endIndex?: number;
+}
+
 export class ApiError extends Error {
   status?: number;
   code?: string;

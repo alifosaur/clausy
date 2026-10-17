@@ -1,45 +1,477 @@
-import Link from "next/link";
-import { ArrowLeft, BookOpen } from "lucide-react";
+"use client";
 
-export const metadata = {
-  title: "Workspace",
-  description: "Rental agreement document reader and analysis workspace.",
-};
+import React, { useState, useEffect, Suspense, useRef } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useDocumentFiles } from "@/components/DocumentContext";
+import { useToast } from "@/components/Toast";
+import { extract } from "@/lib/api";
+import { verifyTerms, verifyQuoteInPages } from "@/lib/verifier";
+import { DocumentPage, TermItem, FlagItem } from "@/types";
+import { DocumentViewer } from "@/components/DocumentViewer";
+import { KeyTermsTab } from "@/components/KeyTermsTab";
+import { WorthClarifyingTab } from "@/components/WorthClarifyingTab";
+import { AskTab } from "@/components/AskTab";
+import {
+  FileText,
+  AlertCircle,
+  RotateCw,
+  ArrowLeft,
+  ShieldCheck,
+  HelpCircle,
+  Sparkles,
+  BookOpen,
+  FileQuestion,
+  Layers,
+} from "lucide-react";
+
+type AnalysisTab = "terms" | "flags" | "ask";
+type MobileView = "document" | "analysis";
+
+function WorkspaceContent() {
+  const searchParams = useSearchParams();
+  const isSample = searchParams.get("sample") === "1" || searchParams.get("sample") === "true";
+  const { files } = useDocumentFiles();
+  const { showToast } = useToast();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingStepText, setLoadingStepText] = useState("Reading page 1 of 3...");
+  const [error, setError] = useState<string | null>(null);
+
+  const [pages, setPages] = useState<DocumentPage[]>([]);
+  const [terms, setTerms] = useState<TermItem[]>([]);
+  const [flags, setFlags] = useState<FlagItem[]>([]);
+
+  const [currentPageNumber, setCurrentPageNumber] = useState(1);
+  const [activeQuote, setActiveQuote] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<AnalysisTab>("terms");
+  const [mobileView, setMobileView] = useState<MobileView>("document");
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+
+  const tabListRef = useRef<HTMLDivElement>(null);
+
+  // Check if neither sample nor uploaded files exist
+  const hasSource = isSample || (files && files.length > 0);
+
+  const runExtraction = async () => {
+    if (!hasSource) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const totalPages = files && files.length > 0 ? files.length : 3;
+
+    // Loading staged progression text
+    setLoadingStepText(`Reading page 1 of ${totalPages}...`);
+    const timer1 = setTimeout(() => {
+      setLoadingStepText(`Reading page 2 of ${totalPages}...`);
+    }, 350);
+    const timer2 = setTimeout(() => {
+      if (totalPages >= 3) {
+        setLoadingStepText(`Reading page 3 of ${totalPages}...`);
+      }
+    }, 700);
+
+    try {
+      const response = await extract(files && files.length > 0 ? files : undefined);
+      const extractedPages = response.pages || [];
+      const extractedTerms = response.terms || [];
+      const extractedFlags = response.flags || [];
+
+      // Verify terms quotes deterministically against extracted pages
+      const verifiedTerms = verifyTerms(extractedTerms, extractedPages);
+
+      setPages(extractedPages);
+      setTerms(verifiedTerms);
+      setFlags(extractedFlags);
+      setCurrentPageNumber(1);
+      setActiveQuote(undefined);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to extract agreement pages";
+      setError(msg);
+    } finally {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    runExtraction();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSample, files]);
+
+  // Handle quote selection from any tab in right panel
+  const handleSelectQuote = (quote: string, targetPage?: number) => {
+    setActiveQuote(quote);
+
+    // Locate the page containing the quote
+    const verification = verifyQuoteInPages(quote, pages);
+    if (verification.isVerified && verification.pageNumber) {
+      setCurrentPageNumber(verification.pageNumber);
+    } else if (targetPage) {
+      setCurrentPageNumber(targetPage);
+    }
+
+    // On mobile, auto-switch to Document view so user sees the highlighted quote
+    setMobileView("document");
+  };
+
+  // Handle user updating extracted text in textarea
+  const handleUpdatePageText = (pageNumber: number, newText: string) => {
+    setPages((prevPages) =>
+      prevPages.map((p) => (p.pageNumber === pageNumber ? { ...p, text: newText } : p))
+    );
+  };
+
+  // Re-analyze verification and recalculate Key Terms and Money Card
+  const handleReanalyze = () => {
+    setIsReanalyzing(true);
+    // Re-verify terms against updated pages
+    const updatedTerms = verifyTerms(terms, pages);
+    setTerms(updatedTerms);
+
+    showToast("Document re-analyzed. Verifications updated.", "success");
+    setIsReanalyzing(false);
+  };
+
+  // Keyboard navigation for analysis tabs (Arrow keys, Home, End)
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const tabs: AnalysisTab[] = ["terms", "flags", "ask"];
+    const currentIndex = tabs.indexOf(activeTab);
+
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextTab = tabs[(currentIndex + 1) % tabs.length];
+      setActiveTab(nextTab);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+      setActiveTab(prevTab);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActiveTab("terms");
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActiveTab("ask");
+    }
+  };
+
+  // 1. EMPTY STATE: Neither sample nor files exist
+  if (!hasSource) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 text-center max-w-xl mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-paper-100 border border-paper-border flex items-center justify-center mb-6 shadow-paper">
+          <FileQuestion className="w-8 h-8 text-ink" />
+        </div>
+        <span className="text-xs font-mono uppercase tracking-widest text-ink-muted mb-2">
+          No Agreement Loaded
+        </span>
+        <h1 className="font-serif text-2xl sm:text-4xl font-normal text-ink mb-3 tracking-tight">
+          Upload an agreement or try the sample
+        </h1>
+        <p className="text-sm text-ink-muted max-w-md mx-auto leading-relaxed mb-8 font-sans">
+          Clausy needs a document to read. Upload your rental agreement pages on the home page, or explore our anonymised Bengaluru sample agreement.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Upload My Agreement</span>
+          </Link>
+          <Link
+            href="/workspace?sample=1"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-paper-100 border border-paper-border text-ink text-sm font-medium hover:bg-paper-200 transition-colors focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Try Sample Agreement</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. LOADING STATE: Staged progression text
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-24 text-center max-w-md mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-highlighter-solid/40 border border-highlighter-accent flex items-center justify-center mb-6 animate-pulse">
+          <RotateCw className="w-7 h-7 text-ink animate-spin" />
+        </div>
+        <span className="text-xs font-mono uppercase tracking-widest text-ink-muted mb-2">
+          Clausy OCR & Extraction
+        </span>
+        <h2 className="font-serif text-2xl font-normal text-ink mb-3">
+          {loadingStepText}
+        </h2>
+        <p className="text-xs text-ink-muted leading-relaxed">
+          Reading agreement clauses, parsing financial ratios, and verifying verbatim quotes...
+        </p>
+        <div className="w-48 h-1 bg-paper-200 rounded-full mt-6 overflow-hidden">
+          <div className="h-full bg-ink rounded-full animate-pulse w-3/4" />
+        </div>
+      </div>
+    );
+  }
+
+  // 3. ERROR STATE with Retry button
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 text-center max-w-md mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-300 flex items-center justify-center mb-6 text-amber-700">
+          <AlertCircle className="w-7 h-7" />
+        </div>
+        <h2 className="font-serif text-2xl font-normal text-ink mb-2">
+          Could not read agreement
+        </h2>
+        <p className="text-xs sm:text-sm text-ink-muted mb-6 leading-relaxed">
+          {error}
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={runExtraction}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <RotateCw className="w-4 h-4" />
+            <span>Retry</span>
+          </button>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-paper-100 border border-paper-border text-ink text-sm font-medium hover:bg-paper-200 transition-colors"
+          >
+            <span>Back to Home</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. MAIN WORKSPACE: Split desktop view, 2-tab mobile view
+  return (
+    <div className="flex-1 flex flex-col w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
+      {/* Workspace Header Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-paper-border">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            className="p-1.5 rounded-lg border border-paper-border hover:bg-paper-200 text-ink transition-colors"
+            title="Back to landing page"
+            aria-label="Back to home page"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif text-lg sm:text-xl font-semibold text-ink tracking-tight">
+                Rental Agreement Workspace
+              </h1>
+              {isSample && (
+                <span className="text-[10px] font-mono uppercase bg-highlighter-solid/80 text-ink px-2 py-0.5 rounded font-semibold border border-highlighter-accent">
+                  Sample Agreement
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-ink-muted">
+              Bengaluru Rental Agreement · 3 Pages · Verbatim clause verification
+            </p>
+          </div>
+        </div>
+
+        {/* Mobile View Switcher (Visible only below lg: 1024px) */}
+        <div
+          role="tablist"
+          aria-label="Mobile workspace view"
+          className="lg:hidden inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === "document"}
+            onClick={() => setMobileView("document")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              mobileView === "document"
+                ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Document (P.{currentPageNumber})</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === "analysis"}
+            onClick={() => setMobileView("analysis")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              mobileView === "analysis"
+                ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Analysis & Flags</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Split Workspace Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[620px]">
+        {/* Left Column: Document Viewer (Desktop: 6 cols, Mobile: toggleable) */}
+        <div
+          className={`lg:col-span-6 xl:col-span-7 flex flex-col h-full min-h-[500px] ${
+            mobileView === "document" ? "block" : "hidden lg:block"
+          }`}
+        >
+          <DocumentViewer
+            pages={pages}
+            currentPageNumber={currentPageNumber}
+            onPageChange={(pageNum) => setCurrentPageNumber(pageNum)}
+            onUpdatePageText={handleUpdatePageText}
+            onReanalyze={handleReanalyze}
+            activeQuote={activeQuote}
+            isReanalyzing={isReanalyzing}
+          />
+        </div>
+
+        {/* Right Column: Analysis Panel (Desktop: 6 cols, Mobile: toggleable) */}
+        <div
+          className={`lg:col-span-6 xl:col-span-5 flex flex-col h-full bg-paper-50 border border-paper-border rounded-2xl shadow-paper overflow-hidden ${
+            mobileView === "analysis" ? "block" : "hidden lg:block"
+          }`}
+        >
+          {/* Analysis Tab Navigation with full Arrow Key support */}
+          <div
+            ref={tabListRef}
+            role="tablist"
+            aria-label="Analysis sections"
+            onKeyDown={handleTabKeyDown}
+            className="flex items-center border-b border-paper-border bg-paper-100 p-2 gap-1 overflow-x-auto"
+          >
+            <button
+              id="tab-terms"
+              role="tab"
+              type="button"
+              tabIndex={activeTab === "terms" ? 0 : -1}
+              aria-selected={activeTab === "terms"}
+              aria-controls="panel-terms"
+              onClick={() => setActiveTab("terms")}
+              className={`flex-1 min-w-[100px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ink ${
+                activeTab === "terms"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold border border-paper-border"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Key Terms</span>
+            </button>
+
+            <button
+              id="tab-flags"
+              role="tab"
+              type="button"
+              tabIndex={activeTab === "flags" ? 0 : -1}
+              aria-selected={activeTab === "flags"}
+              aria-controls="panel-flags"
+              onClick={() => setActiveTab("flags")}
+              className={`flex-1 min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ink ${
+                activeTab === "flags"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold border border-paper-border"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Worth Clarifying ({flags.length})</span>
+            </button>
+
+            <button
+              id="tab-ask"
+              role="tab"
+              type="button"
+              tabIndex={activeTab === "ask" ? 0 : -1}
+              aria-selected={activeTab === "ask"}
+              aria-controls="panel-ask"
+              onClick={() => setActiveTab("ask")}
+              className={`flex-1 min-w-[90px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ink ${
+                activeTab === "ask"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold border border-paper-border"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Ask Agreement</span>
+            </button>
+          </div>
+
+          {/* Analysis Tab Panels */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+            {activeTab === "terms" && (
+              <div
+                id="panel-terms"
+                role="tabpanel"
+                aria-labelledby="tab-terms"
+                className="animate-fade-in"
+              >
+                <KeyTermsTab
+                  terms={terms}
+                  onSelectQuote={handleSelectQuote}
+                  activeQuote={activeQuote}
+                />
+              </div>
+            )}
+
+            {activeTab === "flags" && (
+              <div
+                id="panel-flags"
+                role="tabpanel"
+                aria-labelledby="tab-flags"
+                className="animate-fade-in"
+              >
+                <WorthClarifyingTab
+                  flags={flags}
+                  onSelectQuote={handleSelectQuote}
+                  activeQuote={activeQuote}
+                />
+              </div>
+            )}
+
+            {activeTab === "ask" && (
+              <div
+                id="panel-ask"
+                role="tabpanel"
+                aria-labelledby="tab-ask"
+                className="animate-fade-in"
+              >
+                <AskTab
+                  pages={pages}
+                  onSelectQuote={handleSelectQuote}
+                  activeQuote={activeQuote}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function WorkspacePage() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-20 text-center max-w-3xl mx-auto">
-      <div className="w-16 h-16 rounded-2xl bg-paper-100 border border-paper-border flex items-center justify-center mb-6 shadow-paper">
-        <BookOpen className="w-8 h-8 text-ink" />
-      </div>
-
-      <span className="text-xs font-mono uppercase tracking-widest text-ink-muted mb-3">
-        Workspace Scaffold
-      </span>
-
-      <h1 className="font-serif text-3xl sm:text-5xl font-normal text-ink mb-4 tracking-tight">
-        Rental Agreement Workspace
-      </h1>
-
-      <p className="text-sm sm:text-base text-ink-muted max-w-xl mx-auto leading-relaxed mb-8">
-        This workspace will house the split-screen reader: document viewer with photo/text toggles and marker highlights on the left; key terms, worth clarifying flags, and cited Q&A on the right.
-      </p>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Link
-          href="/"
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-paper-100 border border-paper-border text-ink text-sm font-medium hover:bg-paper-200 transition-colors focus-visible:ring-2 focus-visible:ring-ink"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Home</span>
-        </Link>
-        <Link
-          href="/how-we-verify"
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors focus-visible:ring-2 focus-visible:ring-ink"
-        >
-          <span>How We Verify</span>
-        </Link>
-      </div>
-    </div>
+    <Suspense
+      fallback={
+        <div className="flex-1 flex flex-col items-center justify-center py-24 text-center">
+          <RotateCw className="w-8 h-8 text-ink animate-spin mb-3" />
+          <p className="text-xs font-mono text-ink-muted">Loading workspace...</p>
+        </div>
+      }
+    >
+      <WorkspaceContent />
+    </Suspense>
   );
 }
