@@ -18,27 +18,66 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Clear & Start Over",
-  cancelLabel = "Keep Document",
+  cancelLabel = "Cancel",
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    // Focus confirm button when opened
-    confirmBtnRef.current?.focus();
+    // Save previously focused element to return focus on close
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
+
+    // Focus the first focusable element or dialog container
+    const dialog = dialogRef.current;
+    if (dialog) {
+      const focusableElements = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements.length > 0) {
+        focusableElements[0].focus();
+      }
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onCancel();
+        return;
+      }
+
+      // Focus trapping logic
+      if (e.key === "Tab" && dialog) {
+        const focusables = dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+
+        const firstElement = focusables[0];
+        const lastElement = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedElementRef.current?.focus();
+    };
   }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
@@ -56,6 +95,7 @@ export function ConfirmDialog({
         className="relative w-full max-w-md bg-paper-50 border border-paper-border rounded-2xl p-6 sm:p-7 shadow-paper-lg"
       >
         <button
+          type="button"
           onClick={onCancel}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-200 transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
           aria-label="Close dialog"
@@ -92,7 +132,6 @@ export function ConfirmDialog({
             {cancelLabel}
           </button>
           <button
-            ref={confirmBtnRef}
             type="button"
             onClick={onConfirm}
             className="px-4 py-2.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"

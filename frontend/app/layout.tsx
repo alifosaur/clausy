@@ -3,6 +3,8 @@ import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToastProvider } from "@/components/Toast";
+import { DocumentProvider } from "@/components/DocumentContext";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -76,16 +78,21 @@ export default function RootLayout({
           Skip to content
         </a>
 
-        {/* Global Responsive Navbar */}
-        <Navbar />
+        {/* Document state (memory-only) and Toast notifications */}
+        <DocumentProvider>
+          <ToastProvider>
+            {/* Global Responsive Navbar */}
+            <Navbar />
 
-        {/* Semantic main content container */}
-        <main id="main-content" className="flex-1 flex flex-col">
-          {children}
-        </main>
+            {/* Semantic main content container */}
+            <main id="main-content" className="flex-1 flex flex-col">
+              {children}
+            </main>
 
-        {/* Global Footer */}
-        <Footer />
+            {/* Global Footer */}
+            <Footer />
+          </ToastProvider>
+        </DocumentProvider>
       </body>
     </html>
   );
