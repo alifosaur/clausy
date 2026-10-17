@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="6" fill="#FAF8F5"/>
+  <rect x="6" y="5" width="20" height="22" rx="2" fill="#FFFFFF" stroke="#141413" stroke-width="1.5"/>
+  <line x1="10" y1="10" x2="22" y2="10" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Signature highlighter yellow stroke -->
+  <rect x="9.5" y="13.5" width="13" height="4" rx="1.5" fill="#FFE600" opacity="0.85"/>
+  <line x1="10" y1="15.5" x2="22" y2="15.5" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="10" y1="20" x2="18" y2="20" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

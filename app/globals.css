@@ -3,19 +3,98 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FAF8F5;
+  --foreground: #141413;
+  --paper-bg: #FAF8F5;
+  --ink-color: #141413;
+  --highlighter: #FFE600;
+  --highlighter-soft: rgba(254, 240, 138, 0.65);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #FAF8F5;
+  color: #141413;
+  scroll-behavior: smooth;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #FAF8F5;
+  color: #141413;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Marker stroke effect */
+.marker-highlight {
+  background: linear-gradient(104deg, rgba(254, 240, 138, 0.15) 0%, rgba(254, 240, 138, 0.85) 4%, rgba(254, 240, 138, 0.82) 96%, rgba(254, 240, 138, 0.2) 100%);
+  border-radius: 4px;
+  padding: 0 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: all 0.3s ease;
+}
+
+.marker-stroke-active {
+  background: linear-gradient(104deg, #FDE047 0%, #FEF08A 100%);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.4), 0 2px 6px rgba(250, 204, 21, 0.2);
+  border-radius: 4px;
+  padding: 2px 5px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Animated marker stroke reveal */
+@keyframes markerWipe {
+  0% {
+    background-size: 0% 100%;
+  }
+  100% {
+    background-size: 100% 100%;
+  }
+}
+
+.animate-marker {
+  background-image: linear-gradient(to right, rgba(254, 240, 138, 0.8), rgba(254, 240, 138, 0.85));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: markerWipe 0.5s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-marker {
+    animation: none !important;
+    background-size: 100% 100% !important;
+  }
+}
+
+/* Custom subtle scrollbar for document reader */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D8D2C5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C4BCAD;
 }
