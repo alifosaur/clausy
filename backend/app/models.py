@@ -24,14 +24,24 @@ class Answer(BaseModel):
     status: Literal["answered", "not_found"] = Field(..., description="Either answered with citations or refused")
 
 
+class DocumentPage(BaseModel):
+    page: int = Field(default=1, description="1-indexed page number")
+    pageNumber: int = Field(default=1, description="Alias matching frontend DocumentPage")
+    text: str = Field(default="", description="Verbatim extracted text of the page")
+
+
 class ExtractResponse(BaseModel):
     terms: list[Term]
     flags: list[Flag]
+    extracted_text: str = Field(default="", description="Full extracted agreement text")
+    rawText: str = Field(default="", description="Alias for extracted_text matching frontend")
+    pages: list[DocumentPage] = Field(default_factory=list, description="Extracted pages list")
 
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500, description="Tenant question about the agreement")
     extracted_text: str = Field(default="", description="Full extracted agreement text")
+    text: str = Field(default="", description="Alias for extracted_text from frontend")
 
 
 class HealthResponse(BaseModel):

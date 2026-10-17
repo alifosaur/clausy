@@ -5,8 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     GEMMA_API_KEY: str = ""
     GEMMA_API_URL: str = "https://generativelanguage.googleapis.com/v1beta"
-    GEMMA_MODEL: str = ""
+    GEMMA_MODEL: str = "gemma-4-26b-a4b-it"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    MOCK_MODE: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -26,7 +27,8 @@ class Settings(BaseSettings):
             f"Settings(GEMMA_API_KEY={masked_key}, "
             f"GEMMA_API_URL='{self.GEMMA_API_URL}', "
             f"GEMMA_MODEL='{self.GEMMA_MODEL}', "
-            f"ALLOWED_ORIGINS='{self.ALLOWED_ORIGINS}')"
+            f"ALLOWED_ORIGINS='{self.ALLOWED_ORIGINS}', "
+            f"MOCK_MODE={self.MOCK_MODE})"
         )
 
 

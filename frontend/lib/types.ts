@@ -31,6 +31,7 @@ export interface AnswerItem {
 }
 
 export interface DocumentPage {
+  page?: number;
   pageNumber: number;
   text: string;
   imageUrl?: string;
@@ -42,6 +43,7 @@ export interface ExtractResponse {
   flags: FlagItem[];
   pages?: DocumentPage[];
   rawText?: string;
+  extracted_text?: string;
 }
 
 export interface AskResponse extends AnswerItem {

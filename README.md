@@ -125,10 +125,11 @@ cp .env.example .env
 
 | Variable | Description | Example |
 |---|---|---|
-| `GEMMA_API_KEY` | Hosted Gemma API Key (kept secret) | `your_secret_api_key_here` |
-| `GEMMA_API_URL` | Hosted model endpoint | `https://api.example.com/v1` |
-| `GEMMA_MODEL` | Gemma model identifier | `gemma-4` |
+| `GEMMA_API_KEY` | Google Gemini API Key (kept secret) | `your_secret_api_key_here` |
+| `GEMMA_API_URL` | Base API endpoint URL | `https://generativelanguage.googleapis.com/v1beta` |
+| `GEMMA_MODEL` | Target Gemma 4 model identifier | `gemma-4-26b-a4b-it` |
 | `ALLOWED_ORIGINS` | Permitted CORS origins | `http://localhost:3000` |
+| `MOCK_MODE` | Fallback to mock responses without calling API | `false` |
 
 **Run Backend Server**:
 ```bash

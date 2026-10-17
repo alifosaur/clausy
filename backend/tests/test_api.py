@@ -1,9 +1,18 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.core.config import settings
 
 JPEG_SAMPLE = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
 PNG_SAMPLE = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+
+
+@pytest.fixture(autouse=True)
+def enable_mock_mode_for_test_api():
+    original = settings.MOCK_MODE
+    settings.MOCK_MODE = True
+    yield
+    settings.MOCK_MODE = original
 
 
 @pytest.mark.asyncio
