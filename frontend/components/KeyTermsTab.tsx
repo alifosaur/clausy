@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TermItem } from "@/types";
+import { TermItem } from "@/lib/types";
 import { computeMoneyCard, MONEY_CARD_NOTE } from "@/lib/calc";
 import {
   ShieldCheck,

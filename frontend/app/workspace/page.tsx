@@ -7,7 +7,7 @@ import { useDocumentFiles } from "@/components/DocumentContext";
 import { useToast } from "@/components/Toast";
 import { extract } from "@/lib/api";
 import { verifyTerms, verifyQuoteInPages } from "@/lib/verifier";
-import { DocumentPage, TermItem, FlagItem } from "@/types";
+import { DocumentPage, TermItem, FlagItem } from "@/lib/types";
 import { DocumentViewer } from "@/components/DocumentViewer";
 import { KeyTermsTab } from "@/components/KeyTermsTab";
 import { WorthClarifyingTab } from "@/components/WorthClarifyingTab";

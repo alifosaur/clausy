@@ -1,5 +1,7 @@
 import { ExtractResponse, AnswerItem, HealthResponse, ApiError } from "./types";
-import { getMockHealth, getMockExtract, getMockAsk } from "./mock";
+import { getMockHealth, getMockExtract, getMockAsk, PRESET_QUESTIONS } from "./mock";
+
+export { PRESET_QUESTIONS };
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";

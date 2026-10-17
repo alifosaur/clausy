@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { DocumentPage } from "@/types";
+import { DocumentPage } from "@/lib/types";
 import { findQuoteInText } from "@/lib/verifier";
 import {
   FileText,

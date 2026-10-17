@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { DocumentPage, AnswerItem } from "@/types";
-import { ask } from "@/lib/api";
-import { PRESET_QUESTIONS } from "@/lib/mock/sampleAgreement";
+import { DocumentPage, AnswerItem } from "@/lib/types";
+import { ask, PRESET_QUESTIONS } from "@/lib/api";
 import {
   Send,
   ShieldCheck,

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FlagItem } from "@/types";
+import { FlagItem } from "@/lib/types";
 import { useToast } from "./Toast";
 import { Copy, Check, MessageSquare, ArrowUpRight, HelpCircle } from "lucide-react";
 

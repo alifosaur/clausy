@@ -56,6 +56,19 @@ export interface HealthResponse {
   timestamp?: string;
 }
 
+export interface FinancialMetrics {
+  monthlyRent: number;
+  securityDeposit: number;
+  depositMultipleOfRent: number;
+  noticePeriodMonths: number;
+  depositMultipleOfNotice: number;
+  lockInMonths: number;
+  upfrontTotal: number;
+  rawRentString?: string;
+  rawDepositString?: string;
+  rawNoticeString?: string;
+}
+
 export interface VerificationResult {
   isVerified: boolean;
   matchScore: number;
