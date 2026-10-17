@@ -40,7 +40,7 @@ export function Footer() {
             </span>
             <span className="text-paper-border-dark">•</span>
             <a
-              href="https://github.com/judgesnightmareee/clausy"
+              href="https://github.com/alifosaur/clausy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-ink hover:underline font-medium"
