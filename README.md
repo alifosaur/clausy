@@ -175,7 +175,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **17** | Open Graph | Done | Edge-rendered Open Graph & Twitter cards generated via `next/og` (`app/opengraph-image.tsx`). |
 | **18** | Semantic HTML | Done | `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<table>`, `<footer>`. |
 | **19** | Image optimization + alt | Done | Descriptive alt text for document scans, upload thumbnails, and paper representations. |
-| **20** | HTTPS (Vercel) | Done | Production deployment target configured for automated HTTPS/TLS on Vercel. |
+| **20** | HTTPS (Vercel) | Pending | Target configured for automated HTTPS/TLS on Vercel; live production deployment pending. |
 | **21** | Secure input validation | Done | Pydantic v2 models in FastAPI, payload inspection, and file type/size limits. |
 | **22** | No exposed secrets | Done | Frontend contains zero AI keys; backend `.env` is strictly gitignored. |
 | **23** | Auth | N/A | No user accounts, logins, or authentication required by design. |
@@ -198,12 +198,12 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **40** | Screen-reader labels | Done | Explicit `aria-label`, `aria-describedby`, `aria-selected`, and `role="tab"` attributes. |
 | **41** | Database | N/A | Stateless in-memory processing with zero database storage for tenant confidentiality. |
 | **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
-| **43** | Rate limiting + limits | Done | 10 MB / 5-page limits in frontend and SlowAPI rate limiter scaffolded in backend. |
+| **43** | Rate limiting + limits | Pending | Client 10 MB / 5-page limits enforced; backend SlowAPI limiter scaffolded, live rate limiting pending. |
 | **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
 | **45** | Testing (Eval set) | Done | 6/6 smoke/eval tests in `scripts/smoke-test.mjs`, 14/14 pytest unit tests in backend. |
 | **46** | Backups | N/A | Zero user data or documents retained. |
 | **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
-| **48** | Reliable deployment | Done | Automated build checks with 0 TypeScript/ESLint warnings or errors. |
+| **48** | Reliable deployment | Pending | Local build, lint, and tests pass with 0 errors; live production deployment pipeline pending. |
 | **49** | Env var management | Done | Documented in `frontend/.env.example` and `backend/.env.example`. |
 | **50** | Footer | Done | Semantic footer with MIT license, GitHub repo link, and disclaimer on every view. |
 | **51** | Spacing/design system | Done | Standardized 4/8/16/24/32px scale, soft paper borders, and authentic shadows. |
@@ -223,7 +223,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 
 - **Not Legal Advice**: Clausy is an educational document reader, not a law firm. Clausy does not provide legal representation or binding legal advice.
 - **Copy Standard**: Ambiguities are presented as *"worth asking your landlord"*. Clausy strictly avoids normative claims such as *"illegal"*, *"unfair"*, *"overcharged"*, or assertions about what is normal in Bengaluru.
-- **Privacy Notice**: Clausy itself stores nothing. Pages are processed by a hosted model provider; check their data policy before uploading private documents.
+- **Privacy Notice**: Clausy itself stores nothing. Pages are processed by Google's hosted Gemini API running Gemma 4; check Google's data policy before uploading private documents.
 
 ---
 

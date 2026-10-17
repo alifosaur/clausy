@@ -104,7 +104,7 @@ export default function HowWeVerifyPage() {
                   Quote Check in Code
                 </h3>
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  Software cross-checks every cited phrase against the raw extracted text. No hallucinated text passes.
+                  Software cross-checks every cited phrase against raw extracted text. &ldquo;Verified&rdquo; means the quote appears in the text Gemma extracted from the page, and the user can compare it with the page image and correct it. It does not prove the extraction matches the image.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-paper-border text-[11px] font-mono text-ink font-semibold">
@@ -130,6 +130,51 @@ export default function HowWeVerifyPage() {
               </div>
               <div className="mt-4 pt-3 border-t border-paper-border text-[11px] font-mono text-ink-light">
                 Answered or withheld
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Honest Clarification: What "Verified" Means */}
+      <section className="mb-20" aria-labelledby="what-verified-means-heading">
+        <div className="p-6 sm:p-8 rounded-2xl bg-paper-50 border border-paper-border shadow-paper">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-highlighter-solid/60 border border-paper-border flex items-center justify-center flex-shrink-0 mt-1">
+              <ShieldCheck className="w-5 h-5 text-ink" />
+            </div>
+            <div className="space-y-4">
+              <div>
+                <span className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+                  Honest Technical Boundary
+                </span>
+                <h2 id="what-verified-means-heading" className="font-serif text-xl sm:text-2xl font-semibold text-ink mt-0.5">
+                  What &ldquo;Verified&rdquo; Means (And What It Doesn&apos;t)
+                </h2>
+              </div>
+              <p className="text-sm text-ink-muted leading-relaxed">
+                We believe legal tools must be completely transparent about their technical limitations. When Clausy displays a term or answer with the green <strong className="text-ink font-semibold">&ldquo;Verified&rdquo;</strong> badge, here is the exact guarantee:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-paper-100 border border-paper-border">
+                  <h3 className="font-serif text-sm font-semibold text-ink mb-1">
+                    What &ldquo;Verified&rdquo; Guarantees
+                  </h3>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    The quote appears verbatim in the text {GEMMA_MODEL_NAME} extracted from the page. Software code directly matched the cited string against the document text, proving the model did not invent or hallucinate the phrase.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-paper-100 border border-paper-border">
+                  <h3 className="font-serif text-sm font-semibold text-ink mb-1">
+                    What It Does NOT Prove
+                  </h3>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    It does not prove the extraction matches the physical image. If camera glare, a fold, or an OCR slip caused the model to misread a word from the paper, our code verification only verifies against that extracted text.
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-highlighter-solid/15 border border-highlighter-accent/40 text-xs sm:text-sm text-ink-muted leading-relaxed">
+                <strong className="text-ink font-semibold">User Correction &amp; Image Verification:</strong> Because verification only confirms agreement between the answer and extracted text, Clausy keeps the high-resolution original page images right beside the extracted clauses in the workspace. You can always compare the quote directly against the paper photo, spot any OCR discrepancies, and manually edit or correct terms.
               </div>
             </div>
           </div>
@@ -215,7 +260,7 @@ export default function HowWeVerifyPage() {
               <li className="flex items-start gap-2.5">
                 <span className="text-xs font-mono text-ink-muted font-bold mt-1">01</span>
                 <div>
-                  <strong className="text-ink">Verifies quote existence:</strong> String-matches every citation against extracted page text. If a quote cannot be verified, it is marked unverified.
+                  <strong className="text-ink">Verifies quote existence in extracted text:</strong> String-matches every citation against extracted text. It proves the quote is grounded in Gemma&apos;s extraction, but does not prove the extraction matches the image. Users can compare and correct against the original page image.
                 </div>
               </li>
               <li className="flex items-start gap-2.5">

@@ -2,13 +2,21 @@ import type { NextConfig } from "next";
 
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
+// Next.js App Router requires 'unsafe-inline' for inline hydration and bootstrap scripts when using static header CSP.
+// connect-src is strictly limited to 'self' and NEXT_PUBLIC_API_URL.
+// img-src includes blob: for user uploaded page preview thumbnails and data: for inline assets.
+const connectSources = ["'self'"];
+if (apiUrl && !connectSources.includes(apiUrl)) {
+  connectSources.push(apiUrl);
+}
+
 const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data:;
   font-src 'self' data:;
-  connect-src 'self' ${apiUrl} http://localhost:8000;
+  connect-src ${connectSources.join(" ")};
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
