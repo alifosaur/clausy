@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, Heart } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export function Footer() {
   return (
@@ -14,77 +14,55 @@ export function Footer() {
               <strong>Privacy first:</strong> Documents are processed in-memory and sent to a hosted model. Nothing is saved or stored.
             </span>
           </div>
-          <span className="font-medium text-ink bg-highlighter-solid/60 px-2 py-0.5 rounded border border-paper-border">
+          <span className="font-medium text-ink bg-highlighter-solid/60 px-2.5 py-0.5 rounded border border-paper-border">
             Not legal advice
           </span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Col 1: Brand & Mission */}
-          <div className="md:col-span-2 space-y-3">
-            <span className="font-serif text-xl font-bold tracking-tight text-ink relative inline-block">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 text-xs text-ink-muted">
+          {/* Brand & Team */}
+          <div className="space-y-1">
+            <div className="font-serif text-lg font-bold tracking-tight text-ink relative inline-block">
               Clausy
               <span className="absolute bottom-1 left-0 right-0 h-1.5 bg-highlighter-solid -z-10" />
+            </div>
+            <p className="text-ink-muted">
+              Built by team <span className="font-mono font-medium text-ink">judgesnightmareee</span> for Track 1, Gemma 4.
+            </p>
+          </div>
+
+          {/* Links: License, GitHub Placeholder, Contact */}
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <span className="font-mono text-ink-light">
+              MIT License
             </span>
-            <p className="text-sm text-ink-muted leading-relaxed max-w-md">
-              Helping tenants understand rental agreements without hallucinations. Gemma reads agreement pages; code verifies every quote; answers are cited or refused.
-            </p>
-            <p className="text-xs text-ink-light pt-2">
-              Track 1: Best Use of Gemma 4 · Problem Statement G3 · Open Source License
-            </p>
-          </div>
-
-          {/* Col 2: Navigation */}
-          <div>
-            <h3 className="font-medium text-ink text-xs uppercase tracking-wider mb-3">
-              Navigation
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/" className="hover:text-ink transition-colors">
-                  Overview
-                </Link>
-              </li>
-              <li>
-                <Link href="/workspace" className="hover:text-ink transition-colors">
-                  Workspace
-                </Link>
-              </li>
-              <li>
-                <Link href="/how-we-verify" className="hover:text-ink transition-colors">
-                  How We Verify
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-ink transition-colors">
-                  About & Team
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 3: Disclaimer & Contact */}
-          <div>
-            <h3 className="font-medium text-ink text-xs uppercase tracking-wider mb-3">
-              Disclaimer & Info
-            </h3>
-            <p className="text-xs text-ink-muted leading-relaxed mb-3">
-              Clausy is an educational document reader, not a law firm. Clausy does not provide legal advice or attorney representation.
-            </p>
-            <p className="text-xs text-ink-muted">
-              Built 13–18 Oct 2026 by{" "}
-              <span className="font-mono font-medium text-ink">judgesnightmareee</span>.
-            </p>
+            <span className="text-paper-border-dark">•</span>
+            <a
+              href="https://github.com/judgesnightmareee/clausy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink hover:underline font-medium"
+            >
+              GitHub Repository
+            </a>
+            <span className="text-paper-border-dark">•</span>
+            <a
+              href="mailto:team@clausy.example"
+              className="text-ink hover:underline font-medium"
+            >
+              Contact Team
+            </a>
+            <span className="text-paper-border-dark">•</span>
+            <Link href="/about" className="text-ink hover:underline font-medium">
+              About
+            </Link>
           </div>
         </div>
 
-        <div className="border-t border-paper-border mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-ink-light">
-          <p>© 2026 Clausy · Built for Bengaluru & Indian tenants with Gemma 4</p>
-          <p className="flex items-center gap-1">
-            Built with <Heart className="w-3.5 h-3.5 text-ink fill-ink" /> for tenant clarity
-          </p>
+        <div className="border-t border-paper-border mt-6 pt-4 text-center sm:text-left text-[11px] text-ink-light">
+          © 2026 Clausy · Educational rental agreement reader. Not a law firm. Does not provide legal advice.
         </div>
       </div>
     </footer>

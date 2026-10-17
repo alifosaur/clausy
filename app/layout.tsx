@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -68,8 +70,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
-      <body className="min-h-screen bg-paper text-ink font-sans antialiased selection:bg-highlighter-solid selection:text-ink">
-        {children}
+      <body className="min-h-screen bg-paper text-ink font-sans antialiased flex flex-col selection:bg-highlighter-solid selection:text-ink">
+        {/* Skip to content link for accessibility */}
+        <a href="#main-content" className="skip-to-content">
+          Skip to content
+        </a>
+
+        {/* Global Responsive Navbar */}
+        <Navbar />
+
+        {/* Semantic main content container */}
+        <main id="main-content" className="flex-1 flex flex-col">
+          {children}
+        </main>
+
+        {/* Global Footer */}
+        <Footer />
       </body>
     </html>
   );

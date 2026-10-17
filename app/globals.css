@@ -3,12 +3,32 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAF8F5;
-  --foreground: #141413;
-  --paper-bg: #FAF8F5;
-  --ink-color: #141413;
-  --highlighter: #FFE600;
-  --highlighter-soft: rgba(254, 240, 138, 0.65);
+  /* Paper background tokens */
+  --color-paper: #FAF8F5;
+  --color-paper-50: #FFFFFF;
+  --color-paper-100: #FAF8F5;
+  --color-paper-200: #F4F0E8;
+  --color-paper-300: #EAE4D7;
+  --color-paper-border: #E2DCD0;
+  --color-paper-border-dark: #C8BFB0;
+
+  /* Ink text tokens */
+  --color-ink: #141413;
+  --color-ink-deep: #0D0D0C;
+  --color-ink-muted: #524F49;
+  --color-ink-light: #78746C;
+
+  /* Accent: Highlighter Yellow */
+  --color-highlighter: #FFE600;
+  --color-highlighter-soft: rgba(254, 240, 138, 0.65);
+  --color-highlighter-solid: #FEF08A;
+  --color-highlighter-accent: #FACC15;
+
+  /* Muted Greys */
+  --color-grey-100: #F4F2ED;
+  --color-grey-200: #EAE6DE;
+  --color-grey-300: #DDD8CD;
+  --color-grey-500: #757065;
 }
 
 * {
@@ -16,19 +36,48 @@
 }
 
 html {
-  background-color: #FAF8F5;
-  color: #141413;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: #FAF8F5;
-  color: #141413;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global visible focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip to content link styling */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 1rem;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(20, 20, 19, 0.15);
+}
+
+.skip-to-content:focus {
+  left: 1rem;
+  outline: 2px solid var(--color-highlighter);
+  outline-offset: 2px;
 }
 
 /* Marker stroke effect */
@@ -50,37 +99,19 @@ body {
   -webkit-box-decoration-break: clone;
 }
 
-/* Animated marker stroke reveal */
-@keyframes markerWipe {
-  0% {
-    background-size: 0% 100%;
-  }
-  100% {
-    background-size: 100% 100%;
-  }
-}
-
-.animate-marker {
-  background-image: linear-gradient(to right, rgba(254, 240, 138, 0.8), rgba(254, 240, 138, 0.85));
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  animation: markerWipe 0.5s ease-out forwards;
-}
-
+/* Respect prefers-reduced-motion globally */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .animate-marker {
-    animation: none !important;
-    background-size: 100% 100% !important;
-  }
 }
 
-/* Custom subtle scrollbar for document reader */
+/* Paper scrollbars */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
