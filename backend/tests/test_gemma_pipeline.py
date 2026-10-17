@@ -273,3 +273,36 @@ async def test_mock_mode_preserves_mock_responses():
             assert "1. TERM & LOCK-IN:" in data["extracted_text"]
     finally:
         settings.MOCK_MODE = original_mock
+
+
+# 8. Test QuotaNotAvailable distinct error and user-facing generic response
+@pytest.mark.asyncio
+async def test_quota_not_available_distinct_error():
+    from app.services.gemma import QuotaNotAvailable
+
+    err = QuotaNotAvailable()
+    assert str(err) == "This API key's project has no quota. Create the key in a new AI Studio project or enable billing."
+    assert err.status_code == 429
+    assert err.detail == "AI rate limit reached. Please wait a moment and try again."
+
+    # Test API handling of QuotaNotAvailable
+    original_mock = settings.MOCK_MODE
+    original_key = settings.GEMMA_API_KEY
+    settings.MOCK_MODE = False
+    settings.GEMMA_API_KEY = "test-key"
+
+    try:
+        with patch("app.routes.extract.gemma_client.transcribe", side_effect=QuotaNotAvailable()):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                files = [("files", ("page1.jpg", JPEG_SAMPLE, "image/jpeg"))]
+                response = await client.post("/extract", files=files)
+
+                assert response.status_code == 429
+                data = response.json()
+                # User-facing API stays generic and friendly
+                assert data["detail"] == "AI rate limit reached. Please wait a moment and try again."
+    finally:
+        settings.MOCK_MODE = original_mock
+        settings.GEMMA_API_KEY = original_key
+

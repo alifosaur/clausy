@@ -38,8 +38,16 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+import logging
+
+logger = logging.getLogger("clausy")
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    internal_reason = getattr(exc, "internal_reason", None)
+    if internal_reason:
+        logger.warning("Upstream Quota Warning: %s", internal_reason)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},

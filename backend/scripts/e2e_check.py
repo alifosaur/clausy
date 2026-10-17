@@ -120,7 +120,7 @@ class E2ERunner:
             self.results["errors"].append(err_msg)
             return {
                 "success": False,
-                "latency": latency,
+                "latency": None,
                 "status_code": r.status_code,
                 "error": err_msg,
                 "terms": [],
@@ -178,7 +178,7 @@ class E2ERunner:
             return {
                 "question": question,
                 "success": False,
-                "latency": latency,
+                "latency": None,
                 "status_code": r.status_code,
                 "error": err_msg,
             }
@@ -211,11 +211,11 @@ class E2ERunner:
             print("\n--- 1. POST /extract with Clean Pages (PNG) ---")
             clean_res = await self.run_extract(CLEAN_DIR, is_png=True)
             self.results["clean_extract"] = clean_res
-            print(f"Clean Extract: Success={clean_res.get('success')}, Latency={clean_res.get('latency', 0):.2f}s")
             if clean_res.get("success"):
+                print(f"Clean Extract: Success, Latency={clean_res.get('latency', 0):.2f}s")
                 print(f"  Terms: {clean_res.get('total_terms')} (Verified: {clean_res.get('verified_terms')}), Flags: {clean_res.get('total_flags')}")
             else:
-                print(f"  Error: {clean_res.get('error')}")
+                print(f"Clean Extract: FAILED: {clean_res.get('error')}")
 
             # Rate limit backoff (5s)
             print("Waiting 5s to respect rate limits...")
@@ -225,11 +225,11 @@ class E2ERunner:
             print("\n--- 2. POST /extract with Messy Pages (JPG) ---")
             messy_res = await self.run_extract(MESSY_DIR, is_png=False)
             self.results["messy_extract"] = messy_res
-            print(f"Messy Extract: Success={messy_res.get('success')}, Latency={messy_res.get('latency', 0):.2f}s")
             if messy_res.get("success"):
+                print(f"Messy Extract: Success, Latency={messy_res.get('latency', 0):.2f}s")
                 print(f"  Terms: {messy_res.get('total_terms')} (Verified: {messy_res.get('verified_terms')}), Flags: {messy_res.get('total_flags')}")
             else:
-                print(f"  Error: {messy_res.get('error')}")
+                print(f"Messy Extract: FAILED: {messy_res.get('error')}")
 
             # Rate limit backoff (5s)
             print("Waiting 5s to respect rate limits...")
@@ -248,7 +248,10 @@ class E2ERunner:
                 print(f"Asking: '{item['q']}' ({item['type']})...")
                 ask_res = await self.run_ask(item["q"], item["expected"], context_text)
                 self.results["ask_questions"].append(ask_res)
-                print(f"  Status={ask_res.get('actual_status')}, Correct={ask_res.get('behavior_correct')}, Latency={ask_res.get('latency', 0):.2f}s")
+                if ask_res.get("success"):
+                    print(f"  Status={ask_res.get('actual_status')}, Correct={ask_res.get('behavior_correct')}, Latency={ask_res.get('latency', 0):.2f}s")
+                else:
+                    print(f"  FAILED: {ask_res.get('error')}")
                 print("Waiting 5s to respect rate limits...")
                 await asyncio.sleep(5.0)
 
@@ -272,6 +275,11 @@ async def main():
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"\nE2E check finished. Results saved to: {out_file.name}")
+
+    has_failures = bool(results.get("errors")) or not results.get("clean_extract", {}).get("success")
+    if has_failures:
+        print("\nE2E check finished with failures.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

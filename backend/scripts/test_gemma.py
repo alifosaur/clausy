@@ -87,9 +87,7 @@ async def test_image(image_path: str):
         print("==================================================")
 
     except Exception as e:
-        elapsed = time.perf_counter() - start_time
-        print(f"\n[FAILURE] Request failed after {elapsed:.2f} seconds.", file=sys.stderr)
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"\nFAILED: {e}", file=sys.stderr)
         sys.exit(1)
 
 

@@ -72,10 +72,9 @@ async def run_single_transcription(image_path: Path, model_name: str) -> dict:
             "error": None,
         }
     except Exception as e:
-        latency = time.perf_counter() - start
         return {
             "success": False,
-            "latency": latency,
+            "latency": None,
             "raw": None,
             "text": "",
             "error": str(e),
@@ -106,12 +105,14 @@ async def main():
         ground_truth_pages = json.load(f)
     page1_gt = ground_truth_pages[0]["text"]
 
+    any_failed = False
     for name, img_path in [("Clean Page 1 (PNG)", CLEAN_PAGE1), ("Messy Page 1 (JPG)", MESSY_PAGE1)]:
         print(f"\nEvaluating: {name} [{img_path.name}]")
         res = await run_single_transcription(img_path, model_name)
 
         if not res["success"]:
-            print(f"  [ERROR] Call failed after {res['latency']:.2f}s: {res['error']}")
+            print(f"  FAILED: {res['error']}")
+            any_failed = True
             continue
 
         eval_res = evaluate_transcription(page1_gt, res["text"])
@@ -121,6 +122,10 @@ async def main():
         for val, found in eval_res["value_matches"].items():
             status = "FOUND" if found else "NOT FOUND"
             print(f"    - {val:10}: {status}")
+
+    if any_failed:
+        print("\nTranscription check failed.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

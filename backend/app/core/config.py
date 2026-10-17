@@ -1,4 +1,4 @@
-import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("GEMMA_MODEL", mode="before")
+    @classmethod
+    def validate_gemma_model(cls, v: str | None) -> str:
+        """Treat empty or whitespace-only GEMMA_MODEL as unset, falling back to gemma-4-26b-a4b-it."""
+        if v is None or not str(v).strip():
+            return "gemma-4-26b-a4b-it"
+        return str(v).strip()
 
     @property
     def cors_origins(self) -> list[str]:

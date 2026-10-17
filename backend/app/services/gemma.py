@@ -29,6 +29,25 @@ class GemmaError(HTTPException):
         super().__init__(status_code=status_code, detail=detail)
 
 
+class QuotaNotAvailable(GemmaError):
+    """
+    Raised when the API key project has zero allocated quota.
+    Carries a clear internal reason for logs and scripts while keeping
+    the user-facing detail friendly and generic.
+    """
+    def __init__(
+        self,
+        internal_reason: str = "This API key's project has no quota. Create the key in a new AI Studio project or enable billing.",
+        detail: str = "AI rate limit reached. Please wait a moment and try again.",
+        status_code: int = 429,
+    ):
+        super().__init__(detail=detail, status_code=status_code)
+        self.internal_reason = internal_reason
+
+    def __str__(self) -> str:
+        return self.internal_reason
+
+
 class JsonParseError(Exception):
     """Raised when JSON parsing fails even after tolerant extraction."""
     pass
@@ -171,7 +190,13 @@ class GemmaClient:
                     use_json_mime = False
                     continue
 
-                # Retry on 429 / 5xx once
+                # If 429, check if the project has zero allocated quota
+                if response.status_code == 429:
+                    body_lower = response.text.lower()
+                    if 'quota_limit_value": "0"' in body_lower or "quota_limit_value': '0'" in body_lower or ('resource_exhausted' in body_lower and ('limit' in body_lower and '0' in body_lower)):
+                        raise QuotaNotAvailable()
+
+                # Retry on 429 / 5xx once if not zero-quota
                 if response.status_code in (429, 500, 502, 503, 504) and attempt == 0:
                     await asyncio.sleep(2.0)
                     continue

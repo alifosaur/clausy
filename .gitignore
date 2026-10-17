@@ -46,3 +46,5 @@ __pycache__/
 .venv/
 venv/
 env/
+tests/reports/*.json
+backend/tests/reports/*.json
