@@ -387,7 +387,7 @@ export default function HowWeVerifyPage() {
                 Where Your Document Goes
               </h2>
               <p className="text-sm text-ink-muted leading-relaxed">
-                We believe in full transparency regarding document processing. When you upload pages, they are sent to a hosted instance of the <strong className="text-ink font-semibold">{GEMMA_MODEL_NAME}</strong> model strictly for reading and clause extraction. Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.
+                We believe in full transparency regarding document processing: {DATA_POLICY_NOTICE}
               </p>
               <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
                 <li>

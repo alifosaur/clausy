@@ -134,5 +134,5 @@ pytest
 
 ## 🔒 Privacy Notice
 
-Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.
+Clausy itself stores nothing. Pages and text are processed by third-party AI providers (the model host and Sarvam AI); check their data policies before uploading private documents.
 

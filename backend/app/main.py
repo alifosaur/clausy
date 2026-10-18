@@ -19,11 +19,11 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS middleware using ALLOWED_ORIGINS only (no wildcard in production)
+# CORS middleware using ALLOWED_ORIGINS (comma-separated list, exposes X-Timing-Ms)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_credentials="*" not in settings.cors_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["X-Timing-Ms"],
@@ -75,3 +75,11 @@ app.include_router(health.router)
 app.include_router(extract.router)
 app.include_router(ask.router)
 app.include_router(sarvam.router)
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)

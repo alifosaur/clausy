@@ -207,10 +207,9 @@ export default function AboutPage() {
           </p>
 
           <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
-            <li>Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.</li>
+            <li>{DATA_POLICY_NOTICE}</li>
             <li>Your uploaded page photos are loaded into browser memory and sent over secure HTTPS directly to the hosted model for extraction.</li>
             <li>No pages, audio files, or extracted texts are stored on Clausy servers, saved to disk, or preserved in databases.</li>
-            <li>{DATA_POLICY_NOTICE}</li>
             <li>Once you leave or close your browser tab, your uploaded document state is completely wiped from browser memory.</li>
           </ul>
         </div>

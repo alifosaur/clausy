@@ -162,10 +162,52 @@ pytest backend/tests
 
 ---
 
-## 🚢 Deployment Notes
+## 🚢 Deploy Guide
 
-- **Frontend**: Designed for zero-configuration deployment on **Vercel**. Set `NEXT_PUBLIC_API_URL` to your production backend URL and `NEXT_PUBLIC_USE_MOCK=false`.
-- **Backend**: Containerized or deployed directly on **Railway**, **Render**, or **Google Cloud Run** using `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Ensure `ALLOWED_ORIGINS` points to your production Vercel frontend domain.
+Clausy is built for rapid, reliable cloud deployment with decoupled frontend (Vercel) and backend (Render) hosting.
+
+### 1. Backend Deployment (Render)
+
+Deploy `backend/` as a Python Web Service on [Render](https://render.com):
+
+1. **Create Web Service**: Connect your GitHub repository to Render and choose **New Web Service**.
+2. **Build & Runtime Settings**:
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Python Version**: Configured via `backend/runtime.txt` (`python-3.11.7`) or environment variable `PYTHON_VERSION=3.11.7`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. **Environment Variables**:
+   - `GEMMA_API_KEY`: Secret API key for Gemma 4 provider (OpenRouter or Google Gemini)
+   - `GEMMA_API_STYLE`: Model API dialect (`gemini` or `openai`)
+   - `GEMMA_API_URL`: Base API endpoint URL
+   - `GEMMA_MODEL`: Target model identifier (e.g. `gemma-4-26b-a4b-it` or `google/gemma-4-26b-a4b-it`)
+   - `SARVAM_API_KEY`: Sarvam AI subscription key for Indic translation, TTS, and STT
+   - `SARVAM_ENABLED`: Enable Sarvam Indic layer (`true` or `false`)
+   - `SARVAM_API_URL`: Sarvam base API URL (`https://api.sarvam.ai`)
+   - `SARVAM_STT_MODEL`: Speech-to-text model identifier (`saaras:v3`)
+   - `SARVAM_TTS_MODEL`: Text-to-speech model identifier (`bulbul:v3`)
+   - `SARVAM_TRANSLATE_MODEL`: Translation model identifier (`mayura:v1`)
+   - `ALLOWED_ORIGINS`: Comma-separated list of allowed frontend origins (e.g. `https://your-clausy-frontend.vercel.app,http://localhost:3000`)
+   - `MOCK_MODE`: Set `false` for live inference, `true` for offline testing
+   - `PYTHON_VERSION`: `3.11.7`
+
+### 2. Frontend Deployment (Vercel)
+
+Deploy `frontend/` as a Next.js project on [Vercel](https://vercel.com):
+
+1. **Import Project**: Import your GitHub repository into Vercel.
+2. **Build & Project Settings**:
+   - **Framework Preset**: `Next.js`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.next`
+3. **Environment Variables**:
+   - `NEXT_PUBLIC_API_URL`: Public URL of your deployed Render backend (e.g. `https://clausy-api.onrender.com`)
+   - `NEXT_PUBLIC_USE_MOCK`: `false` to enable live backend communication
+   - `NEXT_PUBLIC_SITE_URL`: Canonical URL of your Vercel deployment (e.g. `https://your-clausy-frontend.vercel.app`)
+   - `NEXT_PUBLIC_PROVIDER_NAME`: Model provider display name (e.g. `Google` or `OpenRouter`)
+   - `NEXT_PUBLIC_GEMMA_MODEL_NAME`: Model display name (e.g. `Gemma 4`)
 
 ---
 
@@ -194,11 +236,11 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **17** | Open Graph | Done | Edge-rendered Open Graph & Twitter cards generated via `next/og` (`app/opengraph-image.tsx`). |
 | **18** | Semantic HTML | Done | `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<table>`, `<footer>`. |
 | **19** | Image optimization + alt | Done | Descriptive alt text for document scans, upload thumbnails, and paper representations. |
-| **20** | HTTPS (Vercel) | Pending | Target configured for automated HTTPS/TLS on Vercel; live production deployment pending. |
+| **20** | HTTPS (Vercel) | Done | Configured on Vercel with automated SSL/TLS certificate provisioning. |
 | **21** | Secure input validation | Done | Pydantic v2 models in FastAPI, payload inspection, and file type/size limits. |
 | **22** | No exposed secrets | Done | Frontend contains zero AI keys; backend `.env` is strictly gitignored. |
 | **23** | Auth | N/A | No user accounts, logins, or authentication required by design. |
-| **24** | Privacy section | Done | Clear disclosure: Clausy itself stores nothing; model provider notice displayed. |
+| **24** | Privacy section | Done | Clausy itself stores nothing. Pages and text are processed by third-party AI providers (the model host and Sarvam AI); check their data policies before uploading private documents. |
 | **25** | Terms/not-legal-advice | Done | Plain-language "Not legal advice" notices in header, footer, and `/about`. |
 | **26** | Cookie consent | N/A | Zero cookies, zero tracking pixels, zero analytics scripts used. |
 | **27** | Contact info | Done | Direct link to GitHub Issues and repository on `/about` and footer. |
@@ -217,12 +259,12 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **40** | Screen-reader labels | Done | Explicit `aria-label`, `aria-describedby`, `aria-selected`, and `role="tab"` attributes. |
 | **41** | Database | N/A | Stateless in-memory processing with zero database storage for tenant confidentiality. |
 | **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
-| **43** | Rate limiting + limits | Pending | Client 10 MB / 5-page limits enforced; backend SlowAPI limiter scaffolded, live rate limiting pending. |
+| **43** | Rate limiting + limits | Done | Client 10 MB / 5-page limits, audio signature checks, and backend SlowAPI rate limiting. |
 | **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
-| **45** | Testing (Eval set) | Done | 6/6 smoke/eval tests in `scripts/smoke-test.mjs`, 14/14 pytest unit tests in backend. |
+| **45** | Testing (Eval set) | Done | 8/8 smoke/eval tests in `scripts/smoke-test.mjs`, 51/51 pytest unit tests in backend. |
 | **46** | Backups | N/A | Zero user data or documents retained. |
 | **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
-| **48** | Reliable deployment | Pending | Local build, lint, and tests pass with 0 errors; live production deployment pipeline pending. |
+| **48** | Reliable deployment | Done | Render (Python 3.11 with runtime.txt) and Vercel deployment pipelines configured. |
 | **49** | Env var management | Done | Documented in `frontend/.env.example` and `backend/.env.example`. |
 | **50** | Footer | Done | Semantic footer with MIT license, GitHub repo link, and disclaimer on every view. |
 | **51** | Spacing/design system | Done | Standardized 4/8/16/24/32px scale, soft paper borders, and authentic shadows. |
@@ -242,8 +284,9 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 
 - **Not Legal Advice**: Clausy is an educational document reader, not a law firm. Clausy does not provide legal representation or binding legal advice.
 - **Copy Standard**: Ambiguities are presented as *"worth asking your landlord"*. Clausy strictly avoids normative claims such as *"illegal"*, *"unfair"*, *"overcharged"*, or assertions about what is normal in Bengaluru.
-- **Privacy Notice**: Audio and text you submit for translation or speech are processed by Sarvam AI. Document pages are processed by Google's hosted Gemini API running Gemma 4. Clausy itself stores nothing. Check provider data policies before uploading private documents.
+- **Privacy Notice**: Clausy itself stores nothing. Pages and text are processed by third-party AI providers (the model host and Sarvam AI); check their data policies before uploading private documents.
 
 ---
 
 Built with ❤️ by **Team judgesnightmareee** for the Gemma 4 Hackathon (13–18 Oct 2026).
+

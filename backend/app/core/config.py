@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         """Parses comma-separated allowed origins into a list, stripping whitespace."""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        return origins or ["http://localhost:3000"]
 
     def __repr__(self) -> str:
         """Never log or reveal the secret API keys."""
