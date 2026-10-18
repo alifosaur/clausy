@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { DocumentPage, AnswerItem, AppLanguage } from "@/lib/types";
-import { ask, PRESET_QUESTIONS, translateTexts, transcribeAudio } from "@/lib/api";
+import { ask, translateTexts, transcribeAudio } from "@/lib/api";
 import { ListenButton } from "./ListenButton";
 import {
   Send,
@@ -21,7 +21,6 @@ interface AskTabProps {
   pages: DocumentPage[];
   onSelectQuote: (quote: string, page?: number) => void;
   activeQuote?: string;
-  isSample?: boolean;
   lang?: AppLanguage;
   sarvamEnabled?: boolean;
 }
@@ -42,7 +41,6 @@ export function AskTab({
   pages,
   onSelectQuote,
   activeQuote,
-  isSample = false,
   lang = "en",
   sarvamEnabled = true,
 }: AskTabProps) {
@@ -118,7 +116,7 @@ export function AskTab({
 
     try {
       const fullText = pages.map((p) => p.text).join("\n\n");
-      const response = await ask(q, fullText, { isSample });
+      const response = await ask(q, fullText);
       setCurrentAnswer(response);
       if (response.quotes && response.quotes.length > 0) {
         onSelectQuote(response.quotes[0]);
@@ -238,53 +236,30 @@ export function AskTab({
 
   return (
     <div className="space-y-6">
-      {/* Preset chips row: Differentiated between sample and uploads */}
+      {/* Preset chips row */}
       <div>
         <div className="flex items-center gap-1.5 mb-2.5">
           <Sparkles className="w-3.5 h-3.5 text-ink" />
           <span className="text-xs font-semibold uppercase tracking-wider text-ink font-mono">
-            {isSample ? "Try to break it:" : "Common questions:"}
+            Common questions:
           </span>
           <span className="text-[11px] text-ink-muted">
-            {isSample
-              ? "(Preset queries testing citation vs refusal)"
-              : "(Click any question to ask your agreement)"}
+            (Click any question to ask your agreement)
           </span>
         </div>
 
         <div className="flex flex-wrap gap-2" role="group" aria-label="Preset questions">
-          {isSample
-            ? PRESET_QUESTIONS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handlePresetClick(item.question)}
-                  disabled={isLoading || isRecording}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-paper-border bg-paper-100 hover:bg-paper-200 text-ink font-medium transition-all text-left flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-ink disabled:opacity-50"
-                >
-                  <span>{item.label}</span>
-                  <span
-                    className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-mono ${
-                      item.expectedStatus === "not_found"
-                        ? "bg-paper-300 text-ink-muted"
-                        : "bg-highlighter-solid/80 text-ink font-semibold"
-                    }`}
-                  >
-                    {item.expectedStatus === "not_found" ? "Refusal" : "Cited"}
-                  </span>
-                </button>
-              ))
-            : UPLOAD_PRESET_QUESTIONS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handlePresetClick(item.question)}
-                  disabled={isLoading || isRecording}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-paper-border bg-paper-100 hover:bg-paper-200 text-ink font-medium transition-all text-left focus-visible:ring-2 focus-visible:ring-ink disabled:opacity-50"
-                >
-                  {item.label}
-                </button>
-              ))}
+          {UPLOAD_PRESET_QUESTIONS.map((item, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handlePresetClick(item.question)}
+              disabled={isLoading || isRecording}
+              className="text-xs px-3 py-1.5 rounded-xl border border-paper-border bg-paper-100 hover:bg-paper-200 text-ink font-medium transition-all text-left focus-visible:ring-2 focus-visible:ring-ink disabled:opacity-50"
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
 

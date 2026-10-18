@@ -228,7 +228,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **8** | Form validation | Done | Client and backend checks for JPG/PNG magic bytes, 10 MB size, 5-page count, 500-char questions. |
 | **9** | Loading | Done | Staged "Reading page X of Y...", spinners, elapsed-seconds counter, and dedicated `app/loading.tsx`. |
 | **10** | Error | Done | Friendly categorized error banners, `app/error.tsx`, and `app/global-error.tsx` with retry triggers. |
-| **11** | Empty | Done | Dedicated empty state on `/workspace` directing back to home or sample agreement. |
+| **11** | Empty | Done | Dedicated empty state on `/workspace` directing back to home to upload an agreement. |
 | **12** | Toasts | Done | Paper-styled toast notifications for quote copy feedback and document re-analysis. |
 | **13** | Custom 404 | Done | Editorial paper-styled 404 page in `app/not-found.tsx` with return-to-home actions. |
 | **14** | Favicon + title | Done | Custom SVG highlighter favicon (`public/favicon.svg`) and unique title on all routes. |
@@ -236,7 +236,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **16** | Meta title/description | Done | Unique title, description, and canonical URL configured for every page in Next.js metadata. |
 | **17** | Open Graph | Done | Edge-rendered Open Graph & Twitter cards generated via `next/og` (`app/opengraph-image.tsx`). |
 | **18** | Semantic HTML | Done | Semantic `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<table>`, `<footer>`. |
-| **19** | Image optimization + alt | Done | Alt text for document scans, upload thumbnails, and simulated paper representations. |
+| **19** | Image optimization + alt | Done | Alt text for document scans and upload preview thumbnails. |
 | **20** | HTTPS (Vercel) | Pending live verification | Automated SSL certificate provisioning configured on Vercel; pending live deployment confirmation. |
 | **21** | Secure input validation | Done | Pydantic v2 models in FastAPI, image pixel limit (40M), payload inspection, and file limits. |
 | **22** | No exposed secrets | Done | Frontend contains zero AI keys; backend `.env` is strictly gitignored. |
@@ -262,7 +262,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
 | **43** | Rate limiting + limits | Pending live verification | Client 10 MB / 5-page limits and backend SlowAPI IP rate limiting implemented; pending live load verification. |
 | **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
-| **45** | Testing (Eval set) | Done | 60 backend pytest tests, 9 frontend tests (8 smoke tests + 1 search unit test using real TypeScript module). Frontend smoke tests check standalone copies of the logic; backend tests mock the model. |
+| **45** | Testing (Eval set) | Done | 60 backend pytest tests, 10 frontend tests (8 smoke tests + 1 search unit test + 1 validation unit test using real TypeScript modules). Frontend smoke tests check standalone copies of the logic; backend tests mock the model. |
 | **46** | Backups | N/A | Zero user data or documents retained. |
 | **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
 | **48** | Reliable deployment | Pending live verification | Render and Vercel build settings and deployment configurations prepared; pending live production deployment. |
@@ -272,7 +272,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **52** | No dead links | Not yet verified | Internal routes and repository links wired; full automated crawl not yet verified. |
 | **53** | No horizontal overflow | Checked in Chrome only | Verified in Chrome DevTools responsive emulation at 360px viewport without overflow. |
 | **54** | Onboarding | Done | Three-step walkthrough on landing page detailing the verification pipeline. |
-| **55** | First-time states | Done | Dedicated empty state on `/workspace` directing back to home or sample agreement. |
+| **55** | First-time states | Done | Dedicated empty state on `/workspace` directing back to home to upload an agreement. |
 | **56** | Password reset | N/A | No user accounts or passwords exist. |
 | **57** | Profiles | N/A | No tenant profiles exist. |
 | **58** | Export/deletion | N/A | Nothing stored; data purges automatically on browser tab closure. |

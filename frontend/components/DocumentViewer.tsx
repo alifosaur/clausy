@@ -11,7 +11,6 @@ import {
   Sparkles,
   AlertCircle,
   ShieldCheck,
-  FileCheck,
   Edit3,
   Eye,
 } from "lucide-react";
@@ -26,7 +25,6 @@ interface DocumentViewerProps {
   activeSearchMatch?: SearchMatch | null;
   searchMatches?: SearchMatch[];
   isReanalyzing?: boolean;
-  isSample?: boolean;
 }
 
 export function DocumentViewer({
@@ -39,7 +37,6 @@ export function DocumentViewer({
   activeSearchMatch,
   searchMatches = [],
   isReanalyzing = false,
-  isSample = false,
 }: DocumentViewerProps) {
   // Switch between "Pages" view and "Extracted text" view
   const [viewMode, setViewMode] = useState<"pages" | "text">("pages");
@@ -472,119 +469,53 @@ export function DocumentViewer({
             </div>
           </div>
         ) : (
-          /* Pages View: Real uploaded images OR simulated Karnataka E-stamp paper page */
+          /* Pages View: Real uploaded agreement images */
           <div className="flex flex-col items-center justify-center min-h-[480px]">
-            {isSample ? (
-              /* Simulated High-Fidelity Paper Page with Karnataka E-stamp Header (SAMPLE AGREEMENT ONLY) */
-              <div className="w-full max-w-2xl bg-[#FFFDF9] border border-paper-border-dark rounded-xl p-6 sm:p-8 shadow-paper-lg font-serif text-ink relative overflow-hidden">
-                {/* Simulated Karnataka E-Stamp Certificate Header */}
-                <div className="border-2 border-ink/80 rounded-lg p-3 sm:p-4 mb-6 bg-[#FAF6EC] text-ink relative">
-                  {/* Decorative stamp seal */}
-                  <div className="absolute right-3 top-3 w-14 h-14 rounded-full border-2 border-emerald-800/60 flex items-center justify-center text-center rotate-[-12deg] pointer-events-none opacity-85">
-                    <span className="text-[7px] font-mono uppercase text-emerald-900 font-bold leading-tight">
-                      GOVT OF<br />KARNATAKA<br />SECURE
-                    </span>
-                  </div>
-
-                  <div className="text-center pb-2 border-b border-ink/20">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-ink-muted block">
-                      Government of Karnataka · e-Stamp
-                    </span>
-                    <h2 className="font-serif font-bold text-sm sm:text-base tracking-wide text-ink mt-0.5">
-                      CERTIFICATE OF STAMP DUTY
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-[10px] font-mono text-ink/90">
-                    <div>
-                      <span className="text-ink-muted">Certificate No: </span>
-                      <strong className="text-ink">IN-KA77391048291M</strong>
-                    </div>
-                    <div>
-                      <span className="text-ink-muted">Issued Date: </span>
-                      <strong className="text-ink">01-Nov-2026</strong>
-                    </div>
-                    <div>
-                      <span className="text-ink-muted">Stamp Duty: </span>
-                      <strong className="text-ink">₹100/- (One Hundred)</strong>
-                    </div>
-                    <div>
-                      <span className="text-ink-muted">Page: </span>
-                      <strong className="text-ink">{currentPage.pageNumber} of {pages.length}</strong>
-                    </div>
-                    <div className="col-span-2 text-[9px] text-ink-muted pt-1 border-t border-ink/10">
-                      Description: Article 12 - Tenancy / Rental Agreement · First Party: Anand K. Murthy · Second Party: Priya Nair
-                    </div>
-                  </div>
-                </div>
-
-                {/* Agreement Body Content */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-paper-border text-[11px] font-mono text-ink-muted">
-                    <span className="uppercase tracking-wider">Schedule Premises: Kaveri Meadows, HSR Layout</span>
-                    <span>Page {currentPage.pageNumber}</span>
-                  </div>
-
-                  {renderHighlightedContent(currentPage.text, false)}
-                </div>
-
-                {/* Footer Stamp & Page verification mark */}
-                <div className="mt-8 pt-4 border-t border-paper-border flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-ink-muted">
-                  <span className="inline-flex items-center gap-1">
-                    <FileCheck className="w-3.5 h-3.5 text-ink" />
-                    Clausy Verified Document Reader
-                  </span>
-                  <span>Karnataka Tenancy Act Format</span>
-                </div>
-              </div>
-            ) : (
-              /* REAL UPLOADED IMAGE VIEW */
-              <div className="w-full max-w-2xl flex flex-col items-center">
-                {/* Mandatory Upload Hint */}
-                <div className="w-full mb-3 px-3.5 py-2 rounded-xl bg-paper-100 border border-paper-border text-xs text-ink-muted flex items-center justify-between gap-2">
-                  <span className="leading-tight">
-                    Compare the quote with your page. Text is read by AI and can contain mistakes.
-                  </span>
-                  {currentPage.imageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setIsZoomed(!isZoomed)}
-                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-paper-200 hover:bg-paper-300 text-ink border border-paper-border transition-colors flex-shrink-0"
-                    >
-                      {isZoomed ? "Zoom Out" : "Zoom In"}
-                    </button>
-                  )}
-                </div>
-
-                {currentPage.imageUrl ? (
-                  <div
+            <div className="w-full max-w-2xl flex flex-col items-center">
+              {/* Mandatory Upload Hint */}
+              <div className="w-full mb-3 px-3.5 py-2 rounded-xl bg-paper-100 border border-paper-border text-xs text-ink-muted flex items-center justify-between gap-2">
+                <span className="leading-tight">
+                  Compare the quote with your page. Text is read by AI and can contain mistakes.
+                </span>
+                {currentPage.imageUrl && (
+                  <button
+                    type="button"
                     onClick={() => setIsZoomed(!isZoomed)}
-                    className={`w-full bg-paper-100 p-2 rounded-xl border border-paper-border shadow-paper transition-all overflow-hidden ${
-                      isZoomed ? "cursor-zoom-out ring-2 ring-ink" : "cursor-zoom-in"
-                    }`}
+                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-paper-200 hover:bg-paper-300 text-ink border border-paper-border transition-colors flex-shrink-0"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={currentPage.imageUrl}
-                      alt={`Agreement page ${currentPage.pageNumber}: ${currentPage.fileName || "Uploaded document scan"}`}
-                      className={`w-full h-auto rounded-lg object-contain border border-paper-border-dark/20 transition-transform duration-200 ${
-                        isZoomed ? "scale-125 origin-top my-4" : ""
-                      }`}
-                    />
-                    <div className="mt-2 px-2 py-1 flex items-center justify-between text-[11px] font-mono text-ink-muted">
-                      <span>{currentPage.fileName || `Page ${currentPage.pageNumber}`}</span>
-                      <span>Click image to {isZoomed ? "zoom out" : "zoom in"}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full p-12 text-center bg-paper-100 rounded-xl border border-paper-border text-ink-muted space-y-2">
-                    <ImageIcon className="w-10 h-10 mx-auto text-ink-muted/50" />
-                    <h3 className="font-serif text-lg text-ink">Page {currentPage.pageNumber}</h3>
-                    <p className="text-xs text-ink-muted">Uploaded document scan</p>
-                  </div>
+                    {isZoomed ? "Zoom Out" : "Zoom In"}
+                  </button>
                 )}
               </div>
-            )}
+
+              {currentPage.imageUrl ? (
+                <div
+                  onClick={() => setIsZoomed(!isZoomed)}
+                  className={`w-full bg-paper-100 p-2 rounded-xl border border-paper-border shadow-paper transition-all overflow-hidden ${
+                    isZoomed ? "cursor-zoom-out ring-2 ring-ink" : "cursor-zoom-in"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentPage.imageUrl}
+                    alt={`Agreement page ${currentPage.pageNumber}: ${currentPage.fileName || "Uploaded document scan"}`}
+                    className={`w-full h-auto rounded-lg object-contain border border-paper-border-dark/20 transition-transform duration-200 ${
+                      isZoomed ? "scale-125 origin-top my-4" : ""
+                    }`}
+                  />
+                  <div className="mt-2 px-2 py-1 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+                    <span>{currentPage.fileName || `Page ${currentPage.pageNumber}`}</span>
+                    <span>Click image to {isZoomed ? "zoom out" : "zoom in"}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full p-12 text-center bg-paper-100 rounded-xl border border-paper-border text-ink-muted space-y-2">
+                  <ImageIcon className="w-10 h-10 mx-auto text-ink-muted/50" />
+                  <h3 className="font-serif text-lg text-ink">Page {currentPage.pageNumber}</h3>
+                  <p className="text-xs text-ink-muted">Uploaded document scan</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

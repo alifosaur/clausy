@@ -290,6 +290,74 @@ async function main() {
     assert.deepStrictEqual(noMatches, []);
   });
 
+  // TEST 10: File Upload Validation (using real TypeScript module lib/validation.ts)
+  await runTest("File Upload Validation: Real TypeScript Module Unit Tests", async () => {
+    const {
+      validateIncomingFiles,
+      isAcceptedImageFile,
+      isHeicFile,
+      HEIC_FRIENDLY_MESSAGE,
+      MAX_FILES,
+      MAX_FILE_SIZE,
+    } = await import("../lib/validation.ts");
+
+    assert.strictEqual(typeof validateIncomingFiles, "function", "validateIncomingFiles must be exported");
+    assert.strictEqual(typeof isAcceptedImageFile, "function", "isAcceptedImageFile must be exported");
+    assert.strictEqual(typeof isHeicFile, "function", "isHeicFile must be exported");
+
+    // 1. Valid JPG and PNG files pass
+    const validJpg = { name: "lease_page1.jpg", size: 1024 * 500, type: "image/jpeg" };
+    const validPng = { name: "lease_page2.png", size: 1024 * 800, type: "image/png" };
+    const res1 = validateIncomingFiles([validJpg, validPng], 0);
+    assert.strictEqual(res1.valid, true, "Valid JPG and PNG must pass validation");
+
+    // 2. Extension fallback when file.type is empty string (common on Windows)
+    const emptyTypeJpg = { name: "scan_photo.jpeg", size: 1024 * 300, type: "" };
+    const emptyTypePng = { name: "document.PNG", size: 1024 * 400, type: "" };
+    const res2 = validateIncomingFiles([emptyTypeJpg, emptyTypePng], 0);
+    assert.strictEqual(res2.valid, true, "Empty file.type with valid extension must pass");
+
+    // 3. iPhone HEIC / HEIF friendly message
+    const heicFile1 = { name: "IMG_5432.HEIC", size: 1024 * 1000, type: "image/heic" };
+    const resHeic = validateIncomingFiles([heicFile1], 0);
+    assert.strictEqual(resHeic.valid, false, "HEIC must be rejected");
+    assert.strictEqual(resHeic.error, HEIC_FRIENDLY_MESSAGE, "Must show iPhone friendly HEIC message");
+
+    const heifFile2 = { name: "IMG_9999.heif", size: 1024 * 1000, type: "" };
+    const resHeif = validateIncomingFiles([heifFile2], 0);
+    assert.strictEqual(resHeif.valid, false, "HEIF with empty type must be rejected");
+    assert.strictEqual(resHeif.error, HEIC_FRIENDLY_MESSAGE, "Must show iPhone friendly message on HEIF");
+
+    // 4. File exceeding 10 MB limit
+    const hugeFile = { name: "huge_agreement.png", size: 11 * 1024 * 1024, type: "image/png" };
+    const resHuge = validateIncomingFiles([hugeFile], 0);
+    assert.strictEqual(resHuge.valid, false, "File over 10 MB must be rejected");
+    assert.ok(resHuge.error.includes("exceeds the 10 MB limit"), "Error must mention 10 MB limit");
+
+    // 5. Exceeding max 5 files limit
+    const filesList = [
+      { name: "p1.jpg", size: 1000, type: "image/jpeg" },
+      { name: "p2.jpg", size: 1000, type: "image/jpeg" },
+      { name: "p3.jpg", size: 1000, type: "image/jpeg" },
+      { name: "p4.jpg", size: 1000, type: "image/jpeg" },
+      { name: "p5.jpg", size: 1000, type: "image/jpeg" },
+      { name: "p6.jpg", size: 1000, type: "image/jpeg" },
+    ];
+    const resCount = validateIncomingFiles(filesList, 0);
+    assert.strictEqual(resCount.valid, false, "More than 5 files must be rejected");
+    assert.ok(resCount.error.includes("Maximum 5 pages allowed"), "Must state max 5 pages");
+
+    // 6. Unsupported file formats (e.g. PDF, EXE, TXT)
+    const pdfFile = { name: "contract.pdf", size: 1000, type: "application/pdf" };
+    const resPdf = validateIncomingFiles([pdfFile], 0);
+    assert.strictEqual(resPdf.valid, false, "PDF must be rejected");
+    assert.ok(resPdf.error.includes("JPG or PNG"), "Must instruct JPG or PNG only");
+
+    // 7. Empty file list
+    const resEmpty = validateIncomingFiles([], 0);
+    assert.strictEqual(resEmpty.valid, false, "Empty list must be rejected");
+  });
+
   console.log(`\n=========================================`);
   console.log(`  RESULTS: ${passed}/${total} TESTS PASSED  `);
   console.log(`=========================================\n`);

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   UploadCloud,
@@ -20,9 +19,11 @@ import { useDocumentFiles } from "@/components/DocumentContext";
 import { useToast } from "@/components/Toast";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DATA_POLICY_NOTICE } from "@/lib/config";
-
-const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+import {
+  MAX_FILES,
+  validateIncomingFiles,
+  formatFileSize,
+} from "@/lib/validation";
 
 interface SelectedFileItem {
   id: string;
@@ -41,6 +42,8 @@ export default function HomeClient() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+  const dragCounterRef = useRef(0);
 
   // WARM-UP: on first load of "/", call health() once in the background to wake backend.
   // Silently ignore failures, show nothing in UI, skip when NEXT_PUBLIC_USE_MOCK is true.
@@ -60,43 +63,24 @@ export default function HomeClient() {
     };
   }, [selectedFiles]);
 
-  const validateAndAddFiles = (incomingFiles: FileList | File[]) => {
+  const validateAndAddFiles = (incoming: FileList | File[]) => {
     setValidationError(null);
-    const newItems: SelectedFileItem[] = [];
-    const currentCount = selectedFiles.length;
 
-    if (currentCount + incomingFiles.length > MAX_FILES) {
-      const msg = `Maximum ${MAX_FILES} pages allowed per agreement. You currently have ${currentCount}.`;
-      setValidationError(msg);
-      showToast(msg, "error");
+    const result = validateIncomingFiles(incoming, selectedFiles.length);
+    if (!result.valid) {
+      setValidationError(result.error);
+      showToast(result.error, "error");
       return;
     }
 
-    for (let i = 0; i < incomingFiles.length; i++) {
-      const file = incomingFiles[i];
+    const newItems: SelectedFileItem[] = [];
+    for (let i = 0; i < result.files.length; i++) {
+      const file = result.files[i];
 
-      // Validate MIME type
-      const isJpg = file.type === "image/jpeg" || file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg");
-      const isPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
-
-      if (!isJpg && !isPng) {
-        const msg = `"${file.name}" is not supported. Please upload JPG or PNG images only.`;
-        setValidationError(msg);
-        showToast(msg, "error");
-        return;
-      }
-
-      // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
-        const msg = `"${file.name}" exceeds the 10 MB limit (${(file.size / (1024 * 1024)).toFixed(1)} MB).`;
-        setValidationError(msg);
-        showToast(msg, "error");
-        return;
-      }
-
-      // Check duplicates by name and size
+      // Check duplicate by name and size
       const isDuplicate = selectedFiles.some(
-        (existing) => existing.file.name === file.name && existing.file.size === file.size
+        (existing) =>
+          existing.file.name === file.name && existing.file.size === file.size
       );
       if (isDuplicate) {
         continue;
@@ -112,12 +96,40 @@ export default function HomeClient() {
 
     if (newItems.length > 0) {
       setSelectedFiles((prev) => [...prev, ...newItems]);
-      showToast(`Added ${newItems.length} agreement page${newItems.length > 1 ? "s" : ""}`, "success");
+      showToast(
+        `Added ${newItems.length} agreement page${newItems.length > 1 ? "s" : ""}`,
+        "success"
+      );
     }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      setIsDragging(false);
+      dragCounterRef.current = 0;
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
     setIsDragging(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -128,9 +140,9 @@ export default function HomeClient() {
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       validateAndAddFiles(e.target.files);
-      // Reset input value so same files can be re-selected if removed
-      e.target.value = "";
     }
+    // Always reset input value so the exact same file can be chosen again
+    e.target.value = "";
   };
 
   const removeFile = (id: string) => {
@@ -163,27 +175,29 @@ export default function HomeClient() {
     router.push("/workspace");
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024 * 1024) {
-      return `${Math.round(bytes / 1024)} KB`;
+  const scrollToDropzone = () => {
+    dropzoneRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  const hasFiles = selectedFiles.length > 0;
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* HERO SECTION */}
-      <section className="pt-14 pb-18 sm:pt-20 sm:pb-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full text-center">
+      {/* HERO SECTION WITH PRIMARY UPLOAD DROPZONE */}
+      <section className="pt-12 pb-16 sm:pt-16 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full text-center">
         {/* Hackathon Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-paper-200 border border-paper-border text-xs text-ink-muted mb-6 shadow-sm">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-paper-200 border border-paper-border text-xs text-ink-muted mb-5 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-highlighter-solid border border-ink" />
           <span className="font-mono uppercase tracking-wider text-[11px]">
             Gemma 4 · Rental Agreement Reader
           </span>
         </div>
 
-        {/* Main Headline with Marker Stroke Effect */}
-        <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-normal text-ink tracking-tight leading-[1.1] mb-6">
+        {/* Main Headline */}
+        <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-normal text-ink tracking-tight leading-[1.1] mb-5">
           Know{" "}
           <span className="relative inline-block px-1">
             <span className="relative z-10">what you&apos;re signing.</span>
@@ -195,76 +209,60 @@ export default function HomeClient() {
         </h1>
 
         {/* Subline */}
-        <p className="text-base sm:text-lg text-ink-muted max-w-2xl mx-auto leading-relaxed mb-10">
-          Clausy reads your rental agreement, shows the exact clause behind every answer, and tells you when the document doesn&apos;t say.
+        <p className="text-base sm:text-lg text-ink-muted max-w-2xl mx-auto leading-relaxed mb-8">
+          Upload photos of your rental agreement. Clausy reads every page, verifies the exact clause behind each answer, and clearly reports when a term is not stated.
         </p>
 
-        {/* Primary Action Button */}
-        <div className="flex justify-center mb-10">
-          <Link
-            href="/workspace?sample=1"
-            className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl bg-ink text-paper text-base font-medium hover:bg-ink-deep transition-all shadow-paper focus-visible:ring-2 focus-visible:ring-ink"
-          >
-            <Sparkles className="w-5 h-5 text-highlighter-solid" />
-            <span>Try the sample agreement</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {/* Upload Dropzone Container */}
-        <div className="max-w-xl mx-auto bg-paper-50 border border-paper-border rounded-2xl p-5 sm:p-7 shadow-paper-lg text-left">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-paper-border">
-            <h2 className="font-serif text-base font-semibold text-ink">
-              Upload your own pages
-            </h2>
-            <span className="text-xs font-mono text-ink-muted">
-              JPG or PNG · Up to 5 files (max 10 MB)
+        {/* PRIMARY HERO ELEMENT: Larger, Higher Upload Dropzone Container */}
+        <div
+          ref={dropzoneRef}
+          className="max-w-2xl mx-auto bg-paper-50 border border-paper-border rounded-2xl p-6 sm:p-8 shadow-paper-lg text-left"
+        >
+          <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-paper-border">
+            <div>
+              <h2 className="font-serif text-lg font-semibold text-ink">
+                Upload agreement pages
+              </h2>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Take photos or drop scans of your physical agreement
+              </p>
+            </div>
+            <span className="text-xs font-mono text-ink-muted bg-paper-200 px-2.5 py-1 rounded-lg border border-paper-border">
+              JPG or PNG · Up to 5 pages
             </span>
           </div>
 
-          {/* Drag & Drop Area */}
-          <div
-            tabIndex={0}
-            role="button"
-            aria-label="Upload agreement photos dropzone. Press Enter or Space to browse files."
-            aria-describedby={validationError ? "upload-error-msg" : undefined}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
+          {/* Accessible Dropzone with native label activation */}
+          <label
+            htmlFor="agreement-file-input"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none ${
+            className={`block border-2 border-dashed rounded-xl p-8 sm:p-12 text-center transition-all cursor-pointer focus-within:ring-2 focus-within:ring-ink focus-within:outline-none ${
               isDragging
-                ? "border-ink bg-highlighter-solid/25 shadow-sm"
-                : "border-paper-border hover:border-paper-border-dark bg-paper-100/60"
+                ? "border-ink bg-highlighter-solid/25 shadow-sm scale-[1.01]"
+                : "border-paper-border hover:border-paper-border-dark bg-paper-100/70 hover:bg-paper-100"
             }`}
           >
             <input
+              id="agreement-file-input"
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/jpeg,image/png"
+              accept="image/jpeg,image/png,.jpg,.jpeg,.png"
               onChange={handleFileInputChange}
               className="sr-only"
-              aria-hidden="true"
             />
 
-            <UploadCloud className="w-9 h-9 text-ink mx-auto mb-2" />
-            <p className="text-sm font-medium text-ink">
-              Click to browse, or drag & drop agreement pages
+            <UploadCloud className="w-12 h-12 text-ink mx-auto mb-3 pointer-events-none" />
+            <p className="text-base font-medium text-ink pointer-events-none">
+              Click to choose files, or drag & drop pages here
             </p>
-            <p className="text-xs text-ink-muted mt-1">
-              Supports camera photos (JPG, PNG) up to 10 MB each
+            <p className="text-xs text-ink-muted mt-1.5 pointer-events-none">
+              Camera photos or clean document scans (JPG, PNG) up to 10 MB each
             </p>
-          </div>
+          </label>
 
           {/* Validation Error State */}
           {validationError && (
@@ -272,14 +270,14 @@ export default function HomeClient() {
               id="upload-error-msg"
               role="alert"
               aria-live="assertive"
-              className="mt-3 p-3 rounded-xl bg-paper-200 border border-paper-border text-xs text-ink flex items-start gap-2"
+              className="mt-3.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2"
             >
-              <AlertCircle className="w-4 h-4 text-ink flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="flex-1 leading-relaxed">{validationError}</div>
               <button
                 type="button"
                 onClick={() => setValidationError(null)}
-                className="text-ink-muted hover:text-ink p-0.5 rounded"
+                className="text-amber-700 hover:text-amber-900 p-0.5 rounded"
                 aria-label="Dismiss error"
               >
                 <X className="w-3.5 h-3.5" />
@@ -288,10 +286,10 @@ export default function HomeClient() {
           )}
 
           {/* Selected Files List with Thumbnails & Remove Actions */}
-          {selectedFiles.length > 0 && (
+          {hasFiles && (
             <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between text-xs text-ink-muted">
-                <span className="font-mono uppercase tracking-wider text-[11px]">
+                <span className="font-mono uppercase tracking-wider text-[11px] font-semibold text-ink">
                   Selected Pages ({selectedFiles.length}/{MAX_FILES})
                 </span>
                 <button
@@ -341,25 +339,26 @@ export default function HomeClient() {
             </div>
           )}
 
-          {/* Action Button: Read My Agreement */}
-          <div className="mt-5 pt-3 border-t border-paper-border">
+          {/* Primary Action Button: Read My Agreement */}
+          <div className="mt-6 pt-3.5 border-t border-paper-border">
             <button
               type="button"
               onClick={handleReadAgreement}
-              disabled={selectedFiles.length === 0}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-all shadow-paper disabled:opacity-40 disabled:pointer-events-none focus-visible:ring-2 focus-visible:ring-ink"
+              disabled={!hasFiles}
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-ink text-paper text-sm font-semibold hover:bg-ink-deep transition-all shadow-paper disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ink"
             >
               <FileCheck2 className="w-4 h-4" />
               <span>
-                {selectedFiles.length === 0
-                  ? "Select pages to read agreement"
+                {!hasFiles
+                  ? "Choose agreement pages to read"
                   : `Read my agreement (${selectedFiles.length} page${selectedFiles.length > 1 ? "s" : ""})`}
               </span>
+              {hasFiles && <ArrowRight className="w-4 h-4 ml-1" />}
             </button>
           </div>
 
-          {/* Privacy Line */}
-          <p className="text-[11px] text-ink-light text-center mt-3 leading-relaxed max-w-xl mx-auto">
+          {/* Privacy Notice */}
+          <p className="text-[11px] text-ink-muted text-center mt-3.5 leading-relaxed max-w-xl mx-auto">
             {DATA_POLICY_NOTICE}
           </p>
         </div>
@@ -504,18 +503,19 @@ export default function HomeClient() {
             Review your rental terms in seconds.
           </h2>
           <p className="text-sm text-ink-muted max-w-xl mx-auto leading-relaxed">
-            Test our verified Bengaluru rental agreement with pre-calculated money metrics and source clause citations.
+            Upload your agreement photos to inspect financial commitments, lock-in terms, and potential ambiguities.
           </p>
 
           <div className="pt-2">
-            <Link
-              href="/workspace?sample=1"
+            <button
+              type="button"
+              onClick={scrollToDropzone}
               className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-all shadow-paper focus-visible:ring-2 focus-visible:ring-ink"
             >
-              <Sparkles className="w-4 h-4 text-highlighter-solid" />
-              <span>Try the sample agreement</span>
+              <UploadCloud className="w-4 h-4 text-highlighter-solid" />
+              <span>Upload agreement photos</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </section>

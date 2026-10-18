@@ -408,10 +408,10 @@ export default function HowWeVerifyPage() {
       {/* CTA Footer */}
       <div className="text-center pt-4">
         <Link
-          href="/workspace?sample=1"
+          href="/"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors shadow-paper focus-visible:ring-2 focus-visible:ring-ink"
         >
-          <span>Try the Sample Agreement</span>
+          <span>Upload Your Agreement</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

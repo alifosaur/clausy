@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useDocumentFiles } from "@/components/DocumentContext";
 import { useToast } from "@/components/Toast";
 import { extract, categorizeError, CategorizedError, health } from "@/lib/api";
@@ -22,7 +21,6 @@ import {
   ShieldCheck,
   HelpCircle,
   Sparkles,
-  BookOpen,
   FileQuestion,
   Layers,
   Languages,
@@ -32,8 +30,6 @@ type AnalysisTab = "terms" | "flags" | "ask";
 type MobileView = "document" | "analysis";
 
 export default function WorkspaceClient() {
-  const searchParams = useSearchParams();
-  const isSample = searchParams.get("sample") === "1" || searchParams.get("sample") === "true";
   const { files } = useDocumentFiles();
   const { showToast } = useToast();
 
@@ -70,11 +66,11 @@ export default function WorkspaceClient() {
       .catch(() => {});
   }, []);
 
-  // Check if neither sample nor uploaded files exist
-  const hasSource = isSample || (files && files.length > 0);
+  // Check if uploaded files exist
+  const hasFiles = Boolean(files && files.length > 0);
 
   const runExtraction = async () => {
-    if (!hasSource) {
+    if (!hasFiles) {
       setIsLoading(false);
       return;
     }
@@ -89,14 +85,14 @@ export default function WorkspaceClient() {
     }, 1000);
 
     try {
-      const response = await extract(files && files.length > 0 ? files : undefined, { isSample });
+      const response = await extract(files);
       const extractedPages = response.pages || [];
       const extractedTerms = response.terms || [];
       const extractedFlags = response.flags || [];
 
-      // Attach blob URLs for real uploaded pages when not sample
+      // Attach blob URLs for real uploaded pages
       const mappedPages: DocumentPage[] = extractedPages.map((p, idx) => {
-        const file = !isSample && files && files[idx] ? files[idx] : undefined;
+        const file = files && files[idx] ? files[idx] : undefined;
         const imageUrl = file ? URL.createObjectURL(file) : p.imageUrl;
         return {
           ...p,
@@ -126,7 +122,7 @@ export default function WorkspaceClient() {
   useEffect(() => {
     runExtraction();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSample, files]);
+  }, [files]);
 
   // Handle quote selection from any tab in right panel
   const handleSelectQuote = (quote: string, targetPage?: number) => {
@@ -194,8 +190,8 @@ export default function WorkspaceClient() {
     }
   };
 
-  // 1. EMPTY STATE: Neither sample nor files exist
-  if (!hasSource) {
+  // 1. EMPTY STATE: No agreement files in memory
+  if (!hasFiles) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 text-center max-w-xl mx-auto">
         <div className="w-16 h-16 rounded-2xl bg-paper-100 border border-paper-border flex items-center justify-center mb-6 shadow-paper">
@@ -205,25 +201,18 @@ export default function WorkspaceClient() {
           No Agreement Loaded
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-ink mb-3 tracking-tight">
-          Upload an agreement or try the sample
+          Upload agreement pages to begin
         </h1>
         <p className="text-sm text-ink-muted max-w-md mx-auto leading-relaxed mb-8 font-sans">
-          Clausy needs a document to read. Upload your rental agreement pages on the home page, or explore our anonymised Bengaluru sample agreement.
+          Clausy holds documents in memory and never stores your files. If you refreshed the page or navigated directly, please select your agreement photos on the home page.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <div className="flex justify-center w-full sm:w-auto">
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-paper text-sm font-medium hover:bg-ink-deep transition-colors focus-visible:ring-2 focus-visible:ring-ink"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-ink text-paper text-sm font-semibold hover:bg-ink-deep transition-colors shadow-paper focus-visible:ring-2 focus-visible:ring-ink"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Upload My Agreement</span>
-          </Link>
-          <Link
-            href="/workspace?sample=1"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-paper-100 border border-paper-border text-ink text-sm font-medium hover:bg-paper-200 transition-colors focus-visible:ring-2 focus-visible:ring-ink"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Try Sample Agreement</span>
           </Link>
         </div>
       </div>
@@ -312,20 +301,12 @@ export default function WorkspaceClient() {
               <h1 className="font-serif text-lg sm:text-xl font-semibold text-ink tracking-tight">
                 Rental Agreement Workspace
               </h1>
-              {isSample ? (
-                <span className="text-[11px] font-mono uppercase bg-highlighter-solid/80 text-ink px-2.5 py-0.5 rounded-md font-semibold border border-highlighter-accent">
-                  Demo data (sample agreement)
-                </span>
-              ) : (
                 <span className="text-[11px] font-mono uppercase bg-paper-200 text-ink px-2.5 py-0.5 rounded-md font-semibold border border-paper-border">
                   Read from your upload · {pages.length} {pages.length === 1 ? "page" : "pages"}
                 </span>
-              )}
             </div>
             <p className="text-xs text-ink-muted">
-              {isSample
-                ? "Bengaluru Rental Agreement · 3 Pages · Demo Sample"
-                : `Uploaded Rental Agreement · ${pages.length} Pages · Verbatim clause verification`}
+              Uploaded Rental Agreement · {pages.length} Pages · Verbatim clause verification
             </p>
           </div>
         </div>
@@ -445,7 +426,6 @@ export default function WorkspaceClient() {
             activeSearchMatch={activeSearchMatch}
             searchMatches={searchMatches}
             isReanalyzing={isReanalyzing}
-            isSample={isSample}
           />
         </div>
 
@@ -563,7 +543,6 @@ export default function WorkspaceClient() {
                   pages={pages}
                   onSelectQuote={handleSelectQuote}
                   activeQuote={activeQuote}
-                  isSample={isSample}
                   lang={currentLang}
                   sarvamEnabled={sarvamEnabled}
                 />
