@@ -22,6 +22,10 @@ export interface SearchablePage {
   text: string;
 }
 
+export interface SearchOptions {
+  wholeWord?: boolean;
+}
+
 /**
  * Escapes regex special characters for literal search.
  */
@@ -32,16 +36,29 @@ export function escapeRegExp(str: string): string {
 /**
  * Finds all case-insensitive whole or partial matches of query in a single text string.
  * Returns character start and end indices.
+ * When options.wholeWord is true (default), matches whole words using boundary rules.
  */
-export function findMatchesInText(query: string, text: string): TextMatch[] {
+export function findMatchesInText(
+  query: string,
+  text: string,
+  options?: SearchOptions
+): TextMatch[] {
   if (!query || !query.trim() || !text) {
     return [];
   }
 
   const trimmedQuery = query.trim();
   const escaped = escapeRegExp(trimmedQuery);
-  const regex = new RegExp(escaped, "gi");
+  const wholeWord = options?.wholeWord ?? true;
 
+  let pattern = escaped;
+  if (wholeWord) {
+    const startBoundary = /^\w/.test(trimmedQuery) ? "\\b" : "";
+    const endBoundary = /\w$/.test(trimmedQuery) ? "\\b" : "";
+    pattern = `${startBoundary}${escaped}${endBoundary}`;
+  }
+
+  const regex = new RegExp(pattern, "gi");
   const matches: TextMatch[] = [];
   let m: RegExpExecArray | null;
 
@@ -65,10 +82,12 @@ export function findMatchesInText(query: string, text: string): TextMatch[] {
  * Finds all matches across multiple pages of extracted text.
  * Returns matches with page numbers and character offsets within each page.
  * Results are ordered by page number, then by occurrence offset.
+ * Whole-word matching is enabled by default.
  */
 export function findSearchMatches(
   query: string,
-  pages: SearchablePage[]
+  pages: SearchablePage[],
+  options?: SearchOptions
 ): SearchMatch[] {
   if (!query || !query.trim() || !pages || pages.length === 0) {
     return [];
@@ -78,7 +97,7 @@ export function findSearchMatches(
 
   for (const page of pages) {
     if (!page.text) continue;
-    const textMatches = findMatchesInText(query, page.text);
+    const textMatches = findMatchesInText(query, page.text, options);
     for (const tm of textMatches) {
       results.push({
         pageNumber: page.pageNumber,

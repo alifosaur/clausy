@@ -7,9 +7,7 @@ import { useToast } from "@/components/Toast";
 import { extract, categorizeError, CategorizedError, health } from "@/lib/api";
 import { verifyTerms, verifyQuoteInPages } from "@/lib/verifier";
 import { DocumentPage, TermItem, FlagItem, AppLanguage } from "@/lib/types";
-import { SearchMatch } from "@/lib/search";
 import { DocumentViewer } from "@/components/DocumentViewer";
-import { DocumentSearch } from "@/components/DocumentSearch";
 import { KeyTermsTab } from "@/components/KeyTermsTab";
 import { WorthClarifyingTab } from "@/components/WorthClarifyingTab";
 import { AskTab } from "@/components/AskTab";
@@ -43,8 +41,6 @@ export default function WorkspaceClient() {
 
   const [currentPageNumber, setCurrentPageNumber] = useState(1);
   const [activeQuote, setActiveQuote] = useState<string | undefined>(undefined);
-  const [activeSearchMatch, setActiveSearchMatch] = useState<SearchMatch | null>(null);
-  const [searchMatches, setSearchMatches] = useState<SearchMatch[]>([]);
   const [activeTab, setActiveTab] = useState<AnalysisTab>("terms");
   const [mobileView, setMobileView] = useState<MobileView>("document");
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -127,7 +123,6 @@ export default function WorkspaceClient() {
   // Handle quote selection from any tab in right panel
   const handleSelectQuote = (quote: string, targetPage?: number) => {
     setActiveQuote(quote);
-    setActiveSearchMatch(null); // Clear search highlight so quote highlight is shown
 
     // Locate the page containing the quote
     const verification = verifyQuoteInPages(quote, pages);
@@ -139,15 +134,6 @@ export default function WorkspaceClient() {
 
     // On mobile, auto-switch to Document view so user sees the highlighted quote
     setMobileView("document");
-  };
-
-  // Handle search match navigation
-  const handleSelectSearchMatch = (match: SearchMatch | null) => {
-    setActiveSearchMatch(match);
-    if (match) {
-      setCurrentPageNumber(match.pageNumber);
-      setActiveQuote(undefined); // Clear quote highlight so search highlight is shown
-    }
   };
 
   // Handle user updating extracted text in textarea
@@ -401,21 +387,13 @@ export default function WorkspaceClient() {
       </div>
 
       {/* Split Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[620px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         {/* Left Column: Document Viewer (Desktop: 6/7 cols, Mobile: toggleable) */}
         <div
-          className={`lg:col-span-6 xl:col-span-7 flex flex-col h-full min-h-[500px] ${
+          className={`lg:col-span-6 xl:col-span-7 flex flex-col ${
             mobileView === "document" ? "block" : "hidden lg:block"
           }`}
         >
-          {/* Find in Document Search Box */}
-          <DocumentSearch
-            pages={pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text }))}
-            currentPageNumber={currentPageNumber}
-            onSelectMatch={handleSelectSearchMatch}
-            onMatchesFound={(matches) => setSearchMatches(matches)}
-          />
-
           <DocumentViewer
             pages={pages}
             currentPageNumber={currentPageNumber}
@@ -423,8 +401,6 @@ export default function WorkspaceClient() {
             onUpdatePageText={handleUpdatePageText}
             onReanalyze={handleReanalyze}
             activeQuote={activeQuote}
-            activeSearchMatch={activeSearchMatch}
-            searchMatches={searchMatches}
             isReanalyzing={isReanalyzing}
           />
         </div>

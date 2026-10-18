@@ -253,9 +253,20 @@ async function main() {
     assert.strictEqual(sampleText.substring(rentMatches[0].startIndex, rentMatches[0].endIndex), "rent");
     assert.strictEqual(sampleText.substring(rentMatches[1].startIndex, rentMatches[1].endIndex), "Rent");
 
-    // 2. Partial word match
+    // 2. Whole word vs partial word match
+    const blockText = "Apartment is in B-Block with 6 months lock-in period.";
+    // Default whole-word matching: does NOT match inside 'Block', but matches 'lock' in 'lock-in'
+    const defaultWholeWordMatches = findMatchesInText("lock", blockText);
+    assert.strictEqual(defaultWholeWordMatches.length, 1, "Default whole-word search should match 'lock' in 'lock-in', but not 'Block'");
+    assert.strictEqual(defaultWholeWordMatches[0].matchedText, "lock");
+
+    // Partial word matching (wholeWord: false): matches BOTH inside 'Block' and 'lock-in'
+    const partialMatches = findMatchesInText("lock", blockText, { wholeWord: false });
+    assert.strictEqual(partialMatches.length, 2, "Partial search with wholeWord: false matches inside 'Block' and 'lock-in'");
+
+    // Legacy query with default options
     const lockMatches = findMatchesInText("lock", sampleText);
-    assert.strictEqual(lockMatches.length, 1, "Should find partial match 'lock' inside 'lock-in'");
+    assert.strictEqual(lockMatches.length, 1, "Should find 'lock' in 'lock-in'");
     assert.strictEqual(lockMatches[0].matchedText, "lock");
     assert.strictEqual(sampleText.substring(lockMatches[0].startIndex, lockMatches[0].endIndex), "lock");
 

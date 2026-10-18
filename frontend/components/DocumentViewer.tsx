@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { DocumentPage } from "@/lib/types";
 import { findQuoteInText } from "@/lib/verifier";
 import { SearchMatch } from "@/lib/search";
+import { DocumentSearch } from "@/components/DocumentSearch";
 import {
   FileText,
   Image as ImageIcon,
@@ -22,8 +23,6 @@ interface DocumentViewerProps {
   onUpdatePageText: (pageNumber: number, newText: string) => void;
   onReanalyze: () => void;
   activeQuote?: string;
-  activeSearchMatch?: SearchMatch | null;
-  searchMatches?: SearchMatch[];
   isReanalyzing?: boolean;
 }
 
@@ -34,8 +33,6 @@ export function DocumentViewer({
   onUpdatePageText,
   onReanalyze,
   activeQuote,
-  activeSearchMatch,
-  searchMatches = [],
   isReanalyzing = false,
 }: DocumentViewerProps) {
   // Switch between "Pages" view and "Extracted text" view
@@ -44,8 +41,11 @@ export function DocumentViewer({
   const [editedText, setEditedText] = useState("");
   const [isEditingText, setIsEditingText] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [activeSearchMatch, setActiveSearchMatch] = useState<SearchMatch | null>(null);
+  const [searchMatches, setSearchMatches] = useState<SearchMatch[]>([]);
+
   const highlightRef = useRef<HTMLElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const currentPage =
     pages.find((p) => p.pageNumber === currentPageNumber) || pages[0];
@@ -58,21 +58,111 @@ export function DocumentViewer({
     }
   }, [currentPage]);
 
-  // When a search match is selected, switch to Extracted Text view and preview mode
-  useEffect(() => {
-    if (activeSearchMatch) {
-      setViewMode("text");
-      setIsEditingText(false);
-    }
-  }, [activeSearchMatch]);
-
   // Check if active quote matches current page text
   const quoteMatch =
     activeQuote && currentPage
       ? findQuoteInText(activeQuote, currentPage.text)
       : { found: false, startIndex: -1, endIndex: -1 };
 
-  // GSAP marker wipe animation and scroll into view when match or quote changes
+  /**
+   * Explicit container scroll to active match or quote.
+   * Only scrolls the document container on desktop (never window/body),
+   * and scrolls the page normally on mobile.
+   */
+  const scrollToHighlight = (highlightEl: HTMLElement | null) => {
+    if (!highlightEl) return;
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // Calculate offsetTop relative to container
+    let offsetTop = highlightEl.offsetTop;
+    let el = highlightEl.offsetParent as HTMLElement | null;
+    while (el && el !== container && container.contains(el)) {
+      offsetTop += el.offsetTop;
+      el = el.offsetParent as HTMLElement | null;
+    }
+
+    const targetTop = Math.max(0, offsetTop - 60);
+
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      // Mobile: page scrolls normally with clearance for top navbar
+      const rect = highlightEl.getBoundingClientRect();
+      const absoluteTop = window.scrollY + rect.top - 80;
+      window.scrollTo({
+        top: Math.max(0, absoluteTop),
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+    } else {
+      // Desktop: scroll ONLY the document container
+      container.scrollTo({
+        top: targetTop,
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+    }
+  };
+
+  /**
+   * Back to top action for search bar button.
+   */
+  const handleBackToTop = () => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+    } else if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+    }
+  };
+
+  /**
+   * Explicit navigation to a search match (triggered on Enter, Next, or Prev only).
+   */
+  const handleNavigateToSearchMatch = (match: SearchMatch) => {
+    setActiveSearchMatch(match);
+    setViewMode("text");
+    setIsEditingText(false);
+
+    if (match.pageNumber !== currentPageNumber) {
+      onPageChange(match.pageNumber);
+    }
+
+    setTimeout(() => {
+      if (highlightRef.current) {
+        scrollToHighlight(highlightRef.current);
+      }
+    }, 50);
+  };
+
+  const handleClearSearch = () => {
+    setActiveSearchMatch(null);
+    setSearchMatches([]);
+  };
+
+  // Scroll to quote when activeQuote changes from an explicit selection in analysis tabs
+  useEffect(() => {
+    if (!activeQuote || !quoteMatch.found) return;
+    setViewMode("text");
+    setIsEditingText(false);
+    setActiveSearchMatch(null); // Clear search highlight when a quote is clicked
+
+    setTimeout(() => {
+      if (highlightRef.current) {
+        scrollToHighlight(highlightRef.current);
+      }
+    }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeQuote]);
+
+  // GSAP marker wipe animation on highlight changes (never triggers scrolling)
   useEffect(() => {
     if (!highlightRef.current) return;
     const isSearchMatchActive = Boolean(
@@ -102,20 +192,7 @@ export function DocumentViewer({
         );
       });
     }
-
-    // Smoothly scroll highlight into view within container
-    highlightRef.current.scrollIntoView({
-      behavior: prefersReducedMotion ? "auto" : "smooth",
-      block: "center",
-    });
-  }, [
-    activeQuote,
-    quoteMatch.found,
-    activeSearchMatch,
-    currentPageNumber,
-    viewMode,
-    isEditingText,
-  ]);
+  }, [activeQuote, quoteMatch.found, activeSearchMatch, currentPageNumber, viewMode, isEditingText]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditedText(e.target.value);
@@ -161,15 +238,15 @@ export function DocumentViewer({
 
         nodes.push(
           <mark
-            key={`match-${m.startIndex}-${m.endIndex}-${i}`}
+            key={`match-${m.startIndex}-${m.endIndex}`}
             ref={isCurrentMatch ? highlightRef : undefined}
-            className={
+            tabIndex={isCurrentMatch ? 0 : undefined}
+            aria-label={isCurrentMatch ? `Active search match: ${m.matchedText}` : undefined}
+            className={`transition-all rounded-sm px-0.5 font-medium ${
               isCurrentMatch
-                ? "bg-transparent bg-gradient-to-r from-highlighter-solid to-highlighter-solid bg-no-repeat text-ink font-semibold px-1 py-0.5 rounded inline shadow-sm border border-highlighter-accent/40"
-                : "bg-highlighter-solid/40 text-ink font-medium px-0.5 py-0.5 rounded inline"
-            }
-            style={isCurrentMatch ? { backgroundSize: "100% 100%" } : undefined}
-            title={isCurrentMatch ? "Current search match" : "Search match"}
+                ? "bg-highlighter-solid text-ink ring-2 ring-ink ring-offset-1 font-semibold"
+                : "bg-highlighter-solid/50 text-ink"
+            }`}
           >
             {text.substring(m.startIndex, m.endIndex)}
           </mark>
@@ -183,38 +260,28 @@ export function DocumentViewer({
       }
 
       return (
-        <div
-          className={`whitespace-pre-wrap leading-relaxed text-ink/90 ${
-            isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-xs sm:text-sm"
-          }`}
-        >
+        <div className={`leading-relaxed ${isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-sm"} text-ink whitespace-pre-wrap`}>
           {nodes}
         </div>
       );
     }
 
-    // 2. Active Quote Highlight
-    if (activeQuote && quoteMatch.found && quoteMatch.startIndex !== -1) {
+    // 2. Verified Quote match
+    if (quoteMatch.found && activeQuote) {
       const before = text.substring(0, quoteMatch.startIndex);
-      const matched = text.substring(quoteMatch.startIndex, quoteMatch.endIndex);
+      const highlighted = text.substring(quoteMatch.startIndex, quoteMatch.endIndex);
       const after = text.substring(quoteMatch.endIndex);
 
       return (
-        <div
-          className={`whitespace-pre-wrap leading-relaxed text-ink/90 ${
-            isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-xs sm:text-sm"
-          }`}
-        >
+        <div className={`leading-relaxed ${isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-sm"} text-ink whitespace-pre-wrap`}>
           {before}
           <mark
             ref={highlightRef}
-            className="bg-transparent bg-gradient-to-r from-highlighter-solid to-highlighter-solid bg-no-repeat text-ink font-semibold px-1 py-0.5 rounded inline shadow-sm border border-highlighter-accent/40"
-            style={{
-              backgroundSize: "100% 100%",
-            }}
-            title="Cited clause"
+            tabIndex={0}
+            aria-label={`Highlighted verified quote: ${highlighted}`}
+            className="highlighter-mark font-medium"
           >
-            {matched}
+            {highlighted}
           </mark>
           {after}
         </div>
@@ -223,30 +290,27 @@ export function DocumentViewer({
 
     // 3. Fallback: unhighlighted text
     return (
-      <div
-        className={`whitespace-pre-wrap leading-relaxed text-ink/90 ${
-          isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-xs sm:text-sm"
-        }`}
-      >
+      <div className={`leading-relaxed ${isMonospace ? "font-mono text-xs sm:text-sm" : "font-sans text-sm"} text-ink whitespace-pre-wrap`}>
         {text}
       </div>
     );
   };
 
-  if (!currentPage) {
-    return (
-      <div className="h-full flex items-center justify-center p-8 bg-paper-50 rounded-2xl border border-paper-border text-ink-muted">
-        No document page selected.
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={containerRef}
-      className="flex flex-col h-full bg-paper-50 border border-paper-border rounded-2xl shadow-paper overflow-hidden"
-    >
-      {/* Document Top Bar */}
+    <div className="flex flex-col bg-paper-50 border border-paper-border rounded-2xl shadow-paper overflow-hidden">
+      {/* 1. Sticky Find in Document Search Box */}
+      <div className="sticky top-0 z-20 bg-paper-50/95 backdrop-blur-sm border-b border-paper-border p-3">
+        <DocumentSearch
+          pages={pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text }))}
+          currentPageNumber={currentPageNumber}
+          onNavigateToMatch={handleNavigateToSearchMatch}
+          onMatchesChange={(matches) => setSearchMatches(matches)}
+          onClearSearch={handleClearSearch}
+          onBackToTop={handleBackToTop}
+        />
+      </div>
+
+      {/* 2. Top Action Bar: View Mode, Page Selector & Re-analyze action */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 border-b border-paper-border bg-paper-100">
         {/* View Mode Toggle: Pages view vs Extracted text view */}
         <div
@@ -327,7 +391,7 @@ export function DocumentViewer({
         </div>
       </div>
 
-      {/* Active Search Match Banner */}
+      {/* 3. Active Search Match Banner */}
       {activeSearchMatch && activeSearchMatch.pageNumber === currentPage.pageNumber && (
         <div className="px-4 py-2 border-b border-paper-border text-xs flex items-center justify-between gap-2 bg-highlighter-solid/40 text-ink">
           <div className="flex items-center gap-2 truncate">
@@ -343,7 +407,7 @@ export function DocumentViewer({
         </div>
       )}
 
-      {/* Active Quote Banner: shows Verified or Unverified badge (when no search active) */}
+      {/* 4. Active Quote Banner: shows Verified or Unverified badge (when no search active) */}
       {!activeSearchMatch && activeQuote && (
         <div
           className={`px-4 py-2 border-b border-paper-border text-xs flex items-center justify-between gap-2 transition-colors ${
@@ -379,11 +443,14 @@ export function DocumentViewer({
         </div>
       )}
 
-      {/* Main Document Viewer Canvas */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-paper-50">
+      {/* 5. Main Document Viewer Canvas: Single scrolling container */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 lg:max-h-[660px] lg:overflow-y-auto overflow-y-visible p-4 sm:p-6 bg-paper-50"
+      >
         {viewMode === "text" ? (
           /* Extracted Text View: Highlighted Preview OR Editable Textarea */
-          <div className="flex flex-col h-full gap-3">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
               <div>
                 <span className="text-xs font-semibold text-ink">
@@ -429,11 +496,12 @@ export function DocumentViewer({
                 value={editedText}
                 onChange={handleTextChange}
                 rows={18}
-                className="w-full flex-1 min-h-[380px] p-4 font-mono text-xs sm:text-sm leading-relaxed bg-paper-100 border border-paper-border rounded-xl text-ink focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-y selection:bg-highlighter-solid selection:text-ink"
+                className="w-full min-h-[380px] p-4 font-mono text-xs sm:text-sm leading-relaxed bg-paper-100 border border-paper-border rounded-xl text-ink focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-y selection:bg-highlighter-solid selection:text-ink"
                 placeholder="Paste or edit agreement text here..."
               />
             ) : (
-              <div className="w-full flex-1 min-h-[380px] p-4 sm:p-5 bg-paper-100 border border-paper-border rounded-xl overflow-y-auto selection:bg-highlighter-solid selection:text-ink">
+              /* Single container, no inner overflow-y-auto to avoid nested scroll trapping */
+              <div className="w-full min-h-[380px] p-4 sm:p-5 bg-paper-100 border border-paper-border rounded-xl selection:bg-highlighter-solid selection:text-ink">
                 {renderHighlightedContent(editedText || currentPage.text, true)}
               </div>
             )}

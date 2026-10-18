@@ -76,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${fraunces.variable} ${inter.variable}`}>
       <body suppressHydrationWarning className="min-h-screen bg-paper text-ink font-sans antialiased flex flex-col selection:bg-highlighter-solid selection:text-ink">
         {/* Skip to content link for accessibility */}
         <a href="#main-content" className="skip-to-content">
