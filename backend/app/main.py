@@ -19,6 +19,11 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+# Enable proxy headers support for reverse proxies (Render, Vercel, Cloudflare)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # CORS middleware using ALLOWED_ORIGINS (comma-separated list, exposes X-Timing-Ms)
 app.add_middleware(
     CORSMiddleware,
@@ -61,6 +66,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unexpected exception occurred during request processing: %s", type(exc).__name__)
     # Never expose stack traces or internal secrets to user
     return JSONResponse(
         status_code=500,

@@ -167,10 +167,12 @@ class GemmaClient:
         self.supports_json_mime = True      # for gemini
         self.supports_json_object = True    # for openai
 
-    def _build_gemini_payload(self, parts: list[dict[str, Any]], use_json_mime: bool) -> dict[str, Any]:
+    def _build_gemini_payload(self, parts: list[dict[str, Any]], use_json_mime: bool, max_tokens: int | None = None) -> dict[str, Any]:
         generation_config: dict[str, Any] = {"temperature": 0.1}
         if use_json_mime:
             generation_config["responseMimeType"] = "application/json"
+        if max_tokens is not None:
+            generation_config["maxOutputTokens"] = max_tokens
 
         return {
             "contents": [
@@ -181,7 +183,7 @@ class GemmaClient:
             "generationConfig": generation_config,
         }
 
-    async def _generate_gemini(self, parts: list[dict[str, Any]]) -> str:
+    async def _generate_gemini(self, parts: list[dict[str, Any]], max_tokens: int | None = None) -> str:
         """
         Sends parts to {GEMMA_API_URL}/models/{GEMMA_MODEL}:generateContent.
         """
@@ -200,7 +202,7 @@ class GemmaClient:
         use_json_mime = self.supports_json_mime
 
         for attempt in range(2):
-            payload = self._build_gemini_payload(parts, use_json_mime=use_json_mime)
+            payload = self._build_gemini_payload(parts, use_json_mime=use_json_mime, max_tokens=max_tokens)
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.post(url, headers=headers, json=payload)
@@ -287,7 +289,7 @@ class GemmaClient:
                 content.append(part)
         return content
 
-    async def _generate_openai(self, parts: list[dict[str, Any]]) -> str:
+    async def _generate_openai(self, parts: list[dict[str, Any]], max_tokens: int | None = None) -> str:
         """
         Sends parts to {GEMMA_API_URL}/chat/completions using OpenAI-compatible payload format.
         """
@@ -319,6 +321,8 @@ class GemmaClient:
                 ],
                 "temperature": 0,
             }
+            if max_tokens is not None:
+                payload["max_tokens"] = max_tokens
             if use_json_format:
                 payload["response_format"] = {"type": "json_object"}
 
@@ -405,20 +409,20 @@ class GemmaClient:
 
         raise GemmaError("Failed to communicate with the AI model after retrying.", status_code=502)
 
-    async def generate_content(self, parts: list[dict[str, Any]]) -> str:
+    async def generate_content(self, parts: list[dict[str, Any]], max_tokens: int | None = None) -> str:
         """
         Dispatches content generation to the configured provider API style.
         """
         if self.api_style == "openai":
-            return await self._generate_openai(parts)
-        return await self._generate_gemini(parts)
+            return await self._generate_openai(parts, max_tokens=max_tokens)
+        return await self._generate_gemini(parts, max_tokens=max_tokens)
 
-    async def generate_json(self, parts: list[dict[str, Any]]) -> tuple[str, dict[str, Any] | list[Any]]:
+    async def generate_json(self, parts: list[dict[str, Any]], max_tokens: int | None = None) -> tuple[str, dict[str, Any] | list[Any]]:
         """
         Generates content and tolerantly parses JSON.
         If initial parse fails, retries once with a repair instruction.
         """
-        raw_response = await self.generate_content(parts)
+        raw_response = await self.generate_content(parts, max_tokens=max_tokens)
         try:
             parsed = parse_json_tolerant(raw_response)
             return raw_response, parsed
@@ -433,7 +437,7 @@ class GemmaClient:
             )
             repair_parts = [{"text": repair_prompt}]
             try:
-                repair_raw = await self.generate_content(repair_parts)
+                repair_raw = await self.generate_content(repair_parts, max_tokens=max_tokens)
                 parsed = parse_json_tolerant(repair_raw)
                 return repair_raw, parsed
             except (JsonParseError, GemmaError) as err:
@@ -442,24 +446,68 @@ class GemmaClient:
                     status_code=502,
                 ) from err
 
-    async def transcribe(self, images: list[dict[str, str]]) -> dict[str, Any]:
+    async def transcribe_single_page(self, img: dict[str, str], page_num: int = 1) -> dict[str, Any]:
         """
-        Sends document page images to Gemma 4 with TRANSCRIBE prompt.
-        images: list of {"mime_type": str, "data": str (base64)}
+        Transcribes a single document page image with sensible max_tokens (2048).
         """
-        parts: list[dict[str, Any]] = [{"text": TRANSCRIBE_SYSTEM_PROMPT}]
-        for img in images:
-            parts.append({
+        parts: list[dict[str, Any]] = [
+            {"text": TRANSCRIBE_SYSTEM_PROMPT},
+            {
                 "inlineData": {
                     "mimeType": img.get("mime_type", "image/jpeg"),
                     "data": img.get("data", ""),
                 }
-            })
-
-        _, parsed = await self.generate_json(parts)
+            },
+        ]
+        _, parsed = await self.generate_json(parts, max_tokens=2048)
+        text = ""
         if isinstance(parsed, dict):
-            return parsed
-        return {"pages": parsed}
+            pages = parsed.get("pages", [])
+            if isinstance(pages, list) and pages:
+                first = pages[0]
+                text = first.get("text", "") if isinstance(first, dict) else str(first)
+            elif "text" in parsed:
+                text = str(parsed["text"])
+            else:
+                text = str(parsed)
+        elif isinstance(parsed, list) and parsed:
+            first = parsed[0]
+            text = first.get("text", "") if isinstance(first, dict) else str(first)
+        else:
+            text = str(parsed)
+
+        return {"page": page_num, "text": text.strip()}
+
+    async def transcribe(self, images: list[dict[str, str]]) -> dict[str, Any]:
+        """
+        Sends document page images to Gemma 4 with TRANSCRIBE prompt.
+        If more than one page is uploaded, transcribes pages concurrently
+        with at most 2 at a time while strictly maintaining page order.
+        """
+        if len(images) <= 1:
+            parts: list[dict[str, Any]] = [{"text": TRANSCRIBE_SYSTEM_PROMPT}]
+            for img in images:
+                parts.append({
+                    "inlineData": {
+                        "mimeType": img.get("mime_type", "image/jpeg"),
+                        "data": img.get("data", ""),
+                    }
+                })
+            _, parsed = await self.generate_json(parts, max_tokens=2048)
+            if isinstance(parsed, dict):
+                return parsed
+            return {"pages": parsed}
+
+        # Multi-page concurrency: at most 2 at a time, strictly maintaining page order
+        sem = asyncio.Semaphore(2)
+
+        async def _transcribe_page_bounded(idx: int, img: dict[str, str]) -> dict[str, Any]:
+            async with sem:
+                return await self.transcribe_single_page(img, page_num=idx + 1)
+
+        tasks = [_transcribe_page_bounded(i, img) for i, img in enumerate(images)]
+        page_results = await asyncio.gather(*tasks)
+        return {"pages": list(page_results)}
 
     async def analyze(self, extracted_text: str) -> dict[str, Any]:
         """

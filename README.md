@@ -105,6 +105,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```bash
 npm test
 ```
+*Note: `scripts/smoke-test.mjs` checks standalone copies of the verification and calculation logic rather than the bundled React frontend.*
 
 **Production Build**:
 ```bash
@@ -261,7 +262,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
 | **43** | Rate limiting + limits | Done | Client 10 MB / 5-page limits, audio signature checks, and backend SlowAPI rate limiting. |
 | **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
-| **45** | Testing (Eval set) | Done | 8/8 smoke/eval tests in `scripts/smoke-test.mjs`, 51/51 pytest unit tests in backend. |
+| **45** | Testing (Eval set) | Done | 8/8 smoke tests in `scripts/smoke-test.mjs` (testing standalone copies of core logic) and backend pytest suite. |
 | **46** | Backups | N/A | Zero user data or documents retained. |
 | **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
 | **48** | Reliable deployment | Done | Render (Python 3.11 with runtime.txt) and Vercel deployment pipelines configured. |

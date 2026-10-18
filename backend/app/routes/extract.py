@@ -1,176 +1,60 @@
+import time
+import json
 import base64
-from fastapi import APIRouter, File, UploadFile, Request
+from fastapi import APIRouter, File, UploadFile, Request, Response
 from app.models import ExtractResponse, DocumentPage, Term, Flag
 from app.core.config import settings
 from app.core.ratelimit import limiter
 from app.core.validate import validate_upload_files
 from app.core.image_proc import optimize_image
-from app.services.verify import verify_quote
+from app.services.verify import verify_quote, verify_term_value
 from app.services.gemma import gemma_client
+from app.mock_data import get_mock_extract_response
 
 router = APIRouter(tags=["Extract"])
-
-MOCK_EXTRACT_PAGES = [
-    DocumentPage(
-        page=1,
-        pageNumber=1,
-        text=(
-            "RENTAL AGREEMENT\n\n"
-            "This Rental Agreement is made and executed on this 1st day of October 2026 at Bengaluru between "
-            "Mr. R. Sundaram (hereinafter called the LESSOR) and Mr. Ananya Sharma (hereinafter called the LESSEE).\n\n"
-            "WHEREAS the Lessor is the absolute owner of Flat No. 402, Greenview Heights, Koramangala, Bengaluru.\n\n"
-            "NOW THIS AGREEMENT WITNESSETH AS FOLLOWS:\n\n"
-            "1. TERM & LOCK-IN: The initial 6 (six) months shall be considered as an irrevocable lock-in period during which "
-            "neither party can terminate the agreement without paying the full rent for the remaining lock-in period.\n\n"
-            "2. RENT: The monthly rent for the schedule premises shall be Rs. 32,000/- (Rupees Thirty Two Thousand only) "
-            "per month, payable in advance on or before the 5th day of each English calendar month through bank transfer.\n\n"
-            "3. SECURITY DEPOSIT: The Lessee has deposited an interest-free refundable security deposit of Rs. 1,60,000/- "
-            "(Rupees One Lakh Sixty Thousand only) with the Lessor, receipt of which is hereby acknowledged. "
-            "The said deposit shall be refunded upon peaceful handover of vacant possession.\n\n"
-            "4. DELAY PENALTIES: In the event of delay in rent payment beyond the 5th of any month, a penal interest of 18% "
-            "per annum calculated on daily basis shall be levied. Continued default of 15 days shall entitle the Lessor "
-            "to terminate this lease immediately."
-        ),
-    ),
-    DocumentPage(
-        page=2,
-        pageNumber=2,
-        text=(
-            "5. MAINTENANCE CHARGES: The Lessee shall pay monthly society maintenance charges of Rs. 3,500/- "
-            "(Rupees Three Thousand Five Hundred only) directly to the Greenview Apartment Owners Association on or before "
-            "10th of every month, along with electricity and water charges as per meter readings.\n\n"
-            "6. NOTICE PERIOD: After the completion of the 6-month lock-in period, either party may terminate this agreement "
-            "by serving a 2 (two) months prior written notice or rent in lieu thereof.\n\n"
-            "7. PAINTING DEDUCTION: Upon vacating the premises, one month's rent amounting to Rs. 32,000/- shall be deducted "
-            "from the security deposit towards professional repainting and deep cleaning charges, irrespective of the physical "
-            "condition of the walls.\n\n"
-            "8. INSPECTION: The Lessor or authorized representatives reserve the right to enter and inspect the premises "
-            "at reasonable hours with 24 hours prior written notice to the Lessee."
-        ),
-    ),
-]
-
-MOCK_EXTRACTED_TEXT = "\n\n".join(p.text for p in MOCK_EXTRACT_PAGES)
-
-MOCK_EXTRACT_TERMS = [
-    Term(
-        key="rent",
-        label="Monthly Rent",
-        value="₹32,000",
-        quote="The monthly rent for the schedule premises shall be Rs. 32,000/- (Rupees Thirty Two Thousand only) per month, payable in advance on or before the 5th day of each English calendar month through bank transfer.",
-        page=1,
-        verified=True,
-    ),
-    Term(
-        key="deposit",
-        label="Security Deposit",
-        value="₹1,60,000",
-        quote="The Lessee has deposited an interest-free refundable security deposit of Rs. 1,60,000/- (Rupees One Lakh Sixty Thousand only) with the Lessor, receipt of which is hereby acknowledged.",
-        page=1,
-        verified=True,
-    ),
-    Term(
-        key="lock_in",
-        label="Lock-in Period",
-        value="6 months",
-        quote="The initial 6 (six) months shall be considered as an irrevocable lock-in period during which neither party can terminate the agreement without paying the full rent for the remaining lock-in period.",
-        page=1,
-        verified=True,
-    ),
-    Term(
-        key="notice_period",
-        label="Notice Period",
-        value="2 months",
-        quote="After the completion of the 6-month lock-in period, either party may terminate this agreement by serving a 2 (two) months prior written notice or rent in lieu thereof.",
-        page=2,
-        verified=True,
-    ),
-    Term(
-        key="penalties",
-        label="Late Payment Penalties",
-        value="18% p.a. daily interest",
-        quote="In the event of delay in rent payment beyond the 5th of any month, a penal interest of 18% per annum calculated on daily basis shall be levied.",
-        page=1,
-        verified=True,
-    ),
-    Term(
-        key="maintenance",
-        label="Society Maintenance",
-        value="₹3,500/month",
-        quote="The Lessee shall pay monthly society maintenance charges of Rs. 3,500/- (Rupees Three Thousand Five Hundred only) directly to the Greenview Apartment Owners Association on or before 10th of every month, along with electricity and water charges as per meter readings.",
-        page=2,
-        verified=True,
-    ),
-]
-
-MOCK_EXTRACT_FLAGS = [
-    Flag(
-        title="Mandatory 1-month painting deduction regardless of wall condition",
-        reason="Clause 7 mandates an automatic full one-month deduction for repainting irrespective of wear and tear, alongside Clause 3's commitment to refund upon peaceful handover. Worth asking your landlord if this can be prorated.",
-        quotes=[
-            "The said deposit shall be refunded upon peaceful handover of vacant possession.",
-            "Upon vacating the premises, one month's rent amounting to Rs. 32,000/- shall be deducted from the security deposit towards professional repainting and deep cleaning charges, irrespective of the physical condition of the walls.",
-        ],
-        question="Could we clarify if the painting deduction can be based on actual inspection invoices and prorated if the stay is short, rather than an automatic one-month deduction?",
-    ),
-    Flag(
-        title="Immediate lease termination on 15-day delay vs lock-in liability",
-        reason="Clause 4 allows the landlord to cancel the agreement after 15 days delay, while Clause 1 binds the tenant to pay full rent for the remaining 6-month lock-in. Worth asking your landlord how these clauses interact.",
-        quotes=[
-            "The initial 6 (six) months shall be considered as an irrevocable lock-in period during which neither party can terminate the agreement without paying the full rent for the remaining lock-in period.",
-            "In the event of delay in rent payment beyond the 5th of any month, a penal interest of 18% per annum calculated on daily basis shall be levied. Continued default of 15 days shall entitle the Lessor to terminate this lease immediately.",
-        ],
-        question="Could we clarify the grace period before lease termination, and confirm whether the lock-in penalty applies if the landlord terminates the lease early?",
-    ),
-    Flag(
-        title="Notice period duration vs deposit refund turnaround",
-        reason="Clause 6 requires a 2-month notice window from the tenant, but Clause 3 leaves the exact refund timeline for the deposit unspecified after key handover. Worth asking your landlord to confirm a refund schedule.",
-        quotes=[
-            "After the completion of the 6-month lock-in period, either party may terminate this agreement by serving a 2 (two) months prior written notice or rent in lieu thereof.",
-            "The said deposit shall be refunded upon peaceful handover of vacant possession.",
-        ],
-        question="Could we agree on a specific turnaround window (such as within 7 bank working days) for the security deposit refund following key handover?",
-    ),
-]
 
 
 @router.post("/extract", response_model=ExtractResponse)
 @limiter.limit("10/minute")
 async def extract_agreement(
     request: Request,
+    response: Response,
     files: list[UploadFile] = File(...),
 ):
     """
     Extracts key terms and flags from uploaded agreement pages (up to 5 images).
     Validates magic bytes, file count, and file size.
-    Calls Gemma 4 TRANSCRIBE and ANALYZE or returns mock responses if MOCK_MODE is enabled.
+    Downscales to max 1280 px on longest side.
+    Calls Gemma 4 TRANSCRIBE (concurrently up to 2 at a time for multi-page) and ANALYZE.
+    Verifies quotes and values in code.
+    Returns per-stage timing breakdown in X-Timing-Ms response header.
     """
+    t_start = time.perf_counter()
+
     # 1. Run strict file validation
     validated_contents = await validate_upload_files(files)
 
     # 2. Return mock data when MOCK_MODE is active
     if settings.MOCK_MODE:
-        return ExtractResponse(
-            terms=MOCK_EXTRACT_TERMS,
-            flags=MOCK_EXTRACT_FLAGS,
-            extracted_text=MOCK_EXTRACTED_TEXT,
-            rawText=MOCK_EXTRACTED_TEXT,
-            pages=MOCK_EXTRACT_PAGES,
-        )
+        timing_data = {"transcribe": 0, "analyze": 0, "verify": 0, "total": 0}
+        response.headers["X-Timing-Ms"] = json.dumps(timing_data)
+        return get_mock_extract_response()
 
-    # 3. Optimize and encode image files for multimodal Gemma 4 call
+    # 3. Optimize and encode image files for multimodal Gemma 4 call (max 1280 px)
     images = []
     for raw_content in validated_contents:
-        opt_bytes, opt_mime = optimize_image(raw_content, max_longest_side=1600, quality=85)
+        opt_bytes, opt_mime = optimize_image(raw_content, max_longest_side=1280, quality=85)
         images.append({
             "mime_type": opt_mime,
             "data": base64.b64encode(opt_bytes).decode("utf-8"),
         })
 
-    # 4. Step 1: TRANSCRIBE once with all page images
+    # 4. Step 1: TRANSCRIBE (concurrent with max 2 at a time if multi-page)
+    t_transcribe_start = time.perf_counter()
     transcribe_result = await gemma_client.transcribe(images)
-    pages_data = transcribe_result.get("pages", [])
+    transcribe_ms = int((time.perf_counter() - t_transcribe_start) * 1000)
 
+    pages_data = transcribe_result.get("pages", [])
     if not isinstance(pages_data, list) or len(pages_data) == 0:
         pages_data = [{"page": 1, "text": ""}]
 
@@ -187,27 +71,36 @@ async def extract_agreement(
     extracted_text = "\n\n".join(p.text for p in pages if p.text)
 
     # 5. Step 2: ANALYZE on extracted text
+    t_analyze_start = time.perf_counter()
     analyze_result = await gemma_client.analyze(extracted_text)
+    analyze_ms = int((time.perf_counter() - t_analyze_start) * 1000)
+
     raw_terms = analyze_result.get("terms", [])
     raw_flags = analyze_result.get("flags", [])
 
-    # 6. Verify term quotes deterministically against extracted text
+    # 6. Step 3: VERIFY term quotes & numeric values deterministically against extracted text
+    t_verify_start = time.perf_counter()
     terms: list[Term] = []
     for t in raw_terms:
         if not isinstance(t, dict):
             continue
         quote = str(t.get("quote", "")).strip()
-        verified = verify_quote(quote, extracted_text) if quote else False
+        val = str(t.get("value", ""))
+        quote_verified = verify_quote(quote, extracted_text) if quote else False
+        # Term is verified only if quote is in text AND all numbers in value appear in quote
+        value_verified = verify_term_value(val, quote) if (quote_verified and val) else False
+        verified = quote_verified and value_verified
+
         terms.append(Term(
             key=str(t.get("key", "other")),
             label=str(t.get("label", t.get("key", "Term"))),
-            value=str(t.get("value", "")),
+            value=val,
             quote=quote,
             page=int(t.get("page", 1)),
             verified=verified,
         ))
 
-    # 7. Verify flag quotes and drop flags whose quotes are all unverified
+    # Verify flag quotes and drop flags whose quotes are all unverified
     flags: list[Flag] = []
     for f in raw_flags:
         if not isinstance(f, dict):
@@ -229,6 +122,18 @@ async def extract_agreement(
             quotes=verified_flag_quotes,
             question=str(f.get("question", "")),
         ))
+
+    verify_ms = int((time.perf_counter() - t_verify_start) * 1000)
+    total_ms = int((time.perf_counter() - t_start) * 1000)
+
+    # 7. Attach stage timings to response header
+    timing_data = {
+        "transcribe": transcribe_ms,
+        "analyze": analyze_ms,
+        "verify": verify_ms,
+        "total": total_ms,
+    }
+    response.headers["X-Timing-Ms"] = json.dumps(timing_data)
 
     return ExtractResponse(
         terms=terms,

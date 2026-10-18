@@ -6,8 +6,16 @@ from app.main import app
 from app.core.config import settings
 from app.services.gemma import GemmaClient, GemmaError, parse_json_tolerant, JsonParseError
 
-JPEG_SAMPLE = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
-PNG_SAMPLE = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+import io
+from PIL import Image
+
+_buf_jpg = io.BytesIO()
+Image.new("RGB", (10, 10), color="white").save(_buf_jpg, format="JPEG")
+JPEG_SAMPLE = _buf_jpg.getvalue()
+
+_buf_png = io.BytesIO()
+Image.new("RGB", (10, 10), color="white").save(_buf_png, format="PNG")
+PNG_SAMPLE = _buf_png.getvalue()
 
 
 # 1. Pipeline Test: Verified quotes kept, fabricated quotes marked unverified, unverified flags dropped
