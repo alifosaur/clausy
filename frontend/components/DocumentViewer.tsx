@@ -21,6 +21,7 @@ interface DocumentViewerProps {
   onReanalyze: () => void;
   activeQuote?: string;
   isReanalyzing?: boolean;
+  isSample?: boolean;
 }
 
 export function DocumentViewer({
@@ -31,9 +32,11 @@ export function DocumentViewer({
   onReanalyze,
   activeQuote,
   isReanalyzing = false,
+  isSample = false,
 }: DocumentViewerProps) {
   // Switch between "Pages" view and "Extracted text" view
   const [viewMode, setViewMode] = useState<"pages" | "text">("pages");
+  const [isZoomed, setIsZoomed] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const highlightRef = useRef<HTMLElement>(null);
@@ -322,22 +325,8 @@ export function DocumentViewer({
         ) : (
           /* Pages View: Real uploaded images OR simulated Karnataka E-stamp paper page */
           <div className="flex flex-col items-center justify-center min-h-[480px]">
-            {currentPage.imageUrl ? (
-              /* Real uploaded image scan */
-              <div className="max-w-2xl w-full bg-paper-100 p-2 rounded-xl border border-paper-border shadow-paper">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={currentPage.imageUrl}
-                  alt={`Agreement page ${currentPage.pageNumber}: ${currentPage.fileName || "Uploaded document scan"}`}
-                  className="w-full h-auto rounded-lg object-contain border border-paper-border-dark/20"
-                />
-                <div className="mt-2 px-2 py-1 flex items-center justify-between text-[11px] font-mono text-ink-muted">
-                  <span>{currentPage.fileName || `Page ${currentPage.pageNumber}`}</span>
-                  <span>Uploaded Image View</span>
-                </div>
-              </div>
-            ) : (
-              /* Simulated High-Fidelity Paper Page with Karnataka E-stamp Header */
+            {isSample ? (
+              /* Simulated High-Fidelity Paper Page with Karnataka E-stamp Header (SAMPLE AGREEMENT ONLY) */
               <div className="w-full max-w-2xl bg-[#FFFDF9] border border-paper-border-dark rounded-xl p-6 sm:p-8 shadow-paper-lg font-serif text-ink relative overflow-hidden">
                 {/* Simulated Karnataka E-Stamp Certificate Header */}
                 <div className="border-2 border-ink/80 rounded-lg p-3 sm:p-4 mb-6 bg-[#FAF6EC] text-ink relative">
@@ -398,6 +387,53 @@ export function DocumentViewer({
                   </span>
                   <span>Karnataka Tenancy Act Format</span>
                 </div>
+              </div>
+            ) : (
+              /* REAL UPLOADED IMAGE VIEW */
+              <div className="w-full max-w-2xl flex flex-col items-center">
+                {/* Mandatory Upload Hint */}
+                <div className="w-full mb-3 px-3.5 py-2 rounded-xl bg-paper-100 border border-paper-border text-xs text-ink-muted flex items-center justify-between gap-2">
+                  <span className="leading-tight">
+                    Compare the quote with your page. Text is read by AI and can contain mistakes.
+                  </span>
+                  {currentPage.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setIsZoomed(!isZoomed)}
+                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-paper-200 hover:bg-paper-300 text-ink border border-paper-border transition-colors flex-shrink-0"
+                    >
+                      {isZoomed ? "Zoom Out" : "Zoom In"}
+                    </button>
+                  )}
+                </div>
+
+                {currentPage.imageUrl ? (
+                  <div
+                    onClick={() => setIsZoomed(!isZoomed)}
+                    className={`w-full bg-paper-100 p-2 rounded-xl border border-paper-border shadow-paper transition-all overflow-hidden ${
+                      isZoomed ? "cursor-zoom-out ring-2 ring-ink" : "cursor-zoom-in"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={currentPage.imageUrl}
+                      alt={`Agreement page ${currentPage.pageNumber}: ${currentPage.fileName || "Uploaded document scan"}`}
+                      className={`w-full h-auto rounded-lg object-contain border border-paper-border-dark/20 transition-transform duration-200 ${
+                        isZoomed ? "scale-125 origin-top my-4" : ""
+                      }`}
+                    />
+                    <div className="mt-2 px-2 py-1 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+                      <span>{currentPage.fileName || `Page ${currentPage.pageNumber}`}</span>
+                      <span>Click image to {isZoomed ? "zoom out" : "zoom in"}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full p-12 text-center bg-paper-100 rounded-xl border border-paper-border text-ink-muted space-y-2">
+                    <ImageIcon className="w-10 h-10 mx-auto text-ink-muted/50" />
+                    <h3 className="font-serif text-lg text-ink">Page {currentPage.pageNumber}</h3>
+                    <p className="text-xs text-ink-muted">Uploaded document scan</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

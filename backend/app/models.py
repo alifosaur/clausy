@@ -46,3 +46,28 @@ class AskRequest(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
+    sarvam_enabled: bool = False
+
+
+class TranslateRequest(BaseModel):
+    texts: list[str] = Field(..., max_length=20, description="List of texts to translate (max 20 items)")
+    target: Literal["kn", "hi", "en"] = Field(..., description="Target language: 'kn', 'hi', or 'en'")
+
+
+class TranslateResponse(BaseModel):
+    texts: list[str]
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=800, description="Text to synthesize to speech (max 800 chars)")
+    lang: Literal["kn", "hi", "en"] = Field(..., description="Language: 'kn', 'hi', or 'en'")
+
+
+class SpeakResponse(BaseModel):
+    audio: str = Field(..., description="Base64 encoded audio in WAV format")
+    content_type: str = Field(default="audio/wav", description="Audio MIME type")
+
+
+class TranscribeResponse(BaseModel):
+    text: str = Field(..., description="Transcribed text from speech")
+    language: str = Field(default="unknown", description="Detected language code")

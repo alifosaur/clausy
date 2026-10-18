@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.ratelimit import limiter
-from app.routes import health, extract, ask
+from app.routes import health, extract, ask, sarvam
 
 app = FastAPI(
     title="Clausy Backend API",
@@ -26,6 +26,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Timing-Ms"],
 )
 
 
@@ -73,3 +74,4 @@ async def generic_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router)
 app.include_router(extract.router)
 app.include_router(ask.router)
+app.include_router(sarvam.router)

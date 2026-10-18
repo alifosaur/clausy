@@ -51,9 +51,15 @@ copy .env.example .env
 
 | Variable | Description | Default |
 |---|---|---|
-| `GEMMA_API_KEY` | Secret Google Gemini API Key | `""` (required when `MOCK_MODE=false`) |
-| `GEMMA_MODEL` | Target Gemma 4 model name | `gemma-4-26b-a4b-it` |
+| `GEMMA_API_KEY` | Secret AI Provider API Key | `""` (required when `MOCK_MODE=false`) |
+| `GEMMA_API_STYLE` | API format: "gemini" or "openai" | `gemini` |
+| `GEMMA_MODEL` | Target Gemma 4 model identifier | `gemma-4-26b-a4b-it` |
 | `GEMMA_API_URL` | Base API endpoint URL | `https://generativelanguage.googleapis.com/v1beta` |
+| `SARVAM_API_KEY` | Sarvam AI API Subscription Key | `""` |
+| `SARVAM_ENABLED` | Toggle Sarvam language layer (true/false) | `true` (if key present) |
+| `SARVAM_STT_MODEL` | Speech-to-text model identifier | `saaras:v3` |
+| `SARVAM_TTS_MODEL` | Text-to-speech model identifier | `bulbul:v3` |
+| `SARVAM_TRANSLATE_MODEL` | Translation model identifier | `mayura:v1` |
 | `ALLOWED_ORIGINS` | Permitted CORS origins | `http://localhost:3000` |
 | `MOCK_MODE` | Fallback to mock responses without calling API | `false` |
 
@@ -114,3 +120,19 @@ pytest
 - Upstream 429/500 errors mapped to friendly user messages without leaking keys
 - File limit enforcement (rejects non-images, > 10 MB, > 5 files)
 - Rate limiting (SlowAPI) and CORS verification
+- Sarvam language layer: translation, text-to-speech, audio transcription, magic byte validation, and upstream error mapping
+
+---
+
+## 🤖 What Each Model Does
+
+- **Gemma 4 (Core Model)**: Reads agreement page images and reasons over the clauses to extract terms and potential ambiguities.
+- **Sarvam AI (Language Layer)**: Used ONLY for Indic translation (Mayura), text-to-speech (Bulbul v3), and speech-to-text (Saaras v3).
+- **Deterministic Code**: Verifies every cited quote character-by-character. Translations are not verified by the quote check; the original English clause is the verified source.
+
+---
+
+## 🔒 Privacy Notice
+
+Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.
+

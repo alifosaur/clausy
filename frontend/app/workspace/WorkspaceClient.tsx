@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDocumentFiles } from "@/components/DocumentContext";
 import { useToast } from "@/components/Toast";
-import { extract, categorizeError, CategorizedError } from "@/lib/api";
+import { extract, categorizeError, CategorizedError, health } from "@/lib/api";
 import { verifyTerms, verifyQuoteInPages } from "@/lib/verifier";
-import { DocumentPage, TermItem, FlagItem } from "@/lib/types";
+import { DocumentPage, TermItem, FlagItem, AppLanguage } from "@/lib/types";
 import { DocumentViewer } from "@/components/DocumentViewer";
 import { KeyTermsTab } from "@/components/KeyTermsTab";
 import { WorthClarifyingTab } from "@/components/WorthClarifyingTab";
@@ -23,6 +23,7 @@ import {
   BookOpen,
   FileQuestion,
   Layers,
+  Languages,
 } from "lucide-react";
 
 type AnalysisTab = "terms" | "flags" | "ask";
@@ -35,7 +36,7 @@ export default function WorkspaceClient() {
   const { showToast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingStepText, setLoadingStepText] = useState("Reading page 1 of 3...");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [errorInfo, setErrorInfo] = useState<CategorizedError | null>(null);
 
   const [pages, setPages] = useState<DocumentPage[]>([]);
@@ -48,7 +49,22 @@ export default function WorkspaceClient() {
   const [mobileView, setMobileView] = useState<MobileView>("document");
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
+  // Language state: React state ONLY (no localStorage)
+  const [currentLang, setCurrentLang] = useState<AppLanguage>("en");
+  const [sarvamEnabled, setSarvamEnabled] = useState(false);
+
   const tabListRef = useRef<HTMLDivElement>(null);
+
+  // Query health endpoint on mount to detect if Sarvam language services are enabled
+  useEffect(() => {
+    health()
+      .then((res) => {
+        if (res.sarvam_enabled !== undefined) {
+          setSarvamEnabled(Boolean(res.sarvam_enabled));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Check if neither sample nor uploaded files exist
   const hasSource = isSample || (files && files.length > 0);
@@ -60,20 +76,13 @@ export default function WorkspaceClient() {
     }
 
     setIsLoading(true);
+    setElapsedSeconds(0);
     setErrorInfo(null);
 
-    const totalPages = files && files.length > 0 ? files.length : 3;
-
-    // Loading staged progression text
-    setLoadingStepText(`Reading page 1 of ${totalPages}...`);
-    const timer1 = setTimeout(() => {
-      setLoadingStepText(`Reading page 2 of ${totalPages}...`);
-    }, 350);
-    const timer2 = setTimeout(() => {
-      if (totalPages >= 3) {
-        setLoadingStepText(`Reading page 3 of ${totalPages}...`);
-      }
-    }, 700);
+    const startTime = Date.now();
+    const timerInterval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
 
     try {
       const response = await extract(files && files.length > 0 ? files : undefined, { isSample });
@@ -81,10 +90,21 @@ export default function WorkspaceClient() {
       const extractedTerms = response.terms || [];
       const extractedFlags = response.flags || [];
 
-      // Verify terms quotes deterministically against extracted pages
-      const verifiedTerms = verifyTerms(extractedTerms, extractedPages);
+      // Attach blob URLs for real uploaded pages when not sample
+      const mappedPages: DocumentPage[] = extractedPages.map((p, idx) => {
+        const file = !isSample && files && files[idx] ? files[idx] : undefined;
+        const imageUrl = file ? URL.createObjectURL(file) : p.imageUrl;
+        return {
+          ...p,
+          imageUrl,
+          fileName: file?.name || p.fileName,
+        };
+      });
 
-      setPages(extractedPages);
+      // Verify terms quotes deterministically against extracted pages
+      const verifiedTerms = verifyTerms(extractedTerms, mappedPages);
+
+      setPages(mappedPages);
       setTerms(verifiedTerms);
       setFlags(extractedFlags);
       setCurrentPageNumber(1);
@@ -94,8 +114,7 @@ export default function WorkspaceClient() {
       const cat = categorizeError(err);
       setErrorInfo(cat);
     } finally {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
+      clearInterval(timerInterval);
       setIsLoading(false);
     }
   };
@@ -197,7 +216,7 @@ export default function WorkspaceClient() {
     );
   }
 
-  // 2. LOADING STATE: Staged progression text
+  // 2. LOADING STATE: Honest progress text with elapsed-seconds counter
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-24 text-center max-w-md mx-auto">
@@ -205,13 +224,16 @@ export default function WorkspaceClient() {
           <RotateCw className="w-7 h-7 text-ink animate-spin" />
         </div>
         <span className="text-xs font-mono uppercase tracking-widest text-ink-muted mb-2">
-          Clausy OCR & Extraction
+          Clausy Document Analysis
         </span>
-        <h2 className="font-serif text-2xl font-normal text-ink mb-3">
-          {loadingStepText}
+        <h2 className="font-serif text-2xl font-normal text-ink mb-2">
+          Reading your pages. This can take up to a minute.
         </h2>
-        <p className="text-xs text-ink-muted leading-relaxed">
-          Reading agreement clauses, parsing financial ratios, and verifying verbatim quotes...
+        <span className="text-xs font-mono text-ink-muted mb-4 block">
+          {elapsedSeconds}s elapsed
+        </span>
+        <p className="text-xs text-ink-muted leading-relaxed max-w-sm">
+          Transcribing page clauses, verifying quotes, and analyzing financial commitments...
         </p>
         <div className="w-48 h-1 bg-paper-200 rounded-full mt-6 overflow-hidden">
           <div className="h-full bg-ink rounded-full animate-pulse w-3/4" />
@@ -294,46 +316,98 @@ export default function WorkspaceClient() {
           </div>
         </div>
 
-        {/* Mobile View Switcher (Visible only below lg: 1024px) */}
-        <div
-          role="tablist"
-          aria-label="Mobile workspace view"
-          className="lg:hidden inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileView === "document"}
-            onClick={() => setMobileView("document")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              mobileView === "document"
-                ? "bg-paper-50 text-ink shadow-sm font-semibold"
-                : "text-ink-muted hover:text-ink"
-            }`}
+        {/* Right Header Controls: Sarvam Language Selector & Mobile View Switcher */}
+        <div className="flex items-center gap-2">
+          {/* Sarvam Language Selector: English / ಕನ್ನಡ / हिन्दी (React state only, hidden if SARVAM_ENABLED is false) */}
+          {sarvamEnabled && (
+            <div
+              role="group"
+              aria-label="Select display language"
+              className="inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border text-xs"
+            >
+              <div className="hidden sm:flex items-center pl-2 pr-1 text-ink-muted">
+                <Languages className="w-3.5 h-3.5" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentLang("en")}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                  currentLang === "en"
+                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+                aria-pressed={currentLang === "en"}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentLang("kn")}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                  currentLang === "kn"
+                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+                aria-pressed={currentLang === "kn"}
+              >
+                ಕನ್ನಡ
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentLang("hi")}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                  currentLang === "hi"
+                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+                aria-pressed={currentLang === "hi"}
+              >
+                हिन्दी
+              </button>
+            </div>
+          )}
+
+          {/* Mobile View Switcher (Visible only below lg: 1024px) */}
+          <div
+            role="tablist"
+            aria-label="Mobile workspace view"
+            className="lg:hidden inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Document (P.{currentPageNumber})</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileView === "analysis"}
-            onClick={() => setMobileView("analysis")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              mobileView === "analysis"
-                ? "bg-paper-50 text-ink shadow-sm font-semibold"
-                : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Analysis & Flags</span>
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileView === "document"}
+              onClick={() => setMobileView("document")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                mobileView === "document"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Document</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileView === "analysis"}
+              onClick={() => setMobileView("analysis")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                mobileView === "analysis"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Analysis</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Split Workspace Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[620px]">
-        {/* Left Column: Document Viewer (Desktop: 6 cols, Mobile: toggleable) */}
+        {/* Left Column: Document Viewer (Desktop: 6/7 cols, Mobile: toggleable) */}
         <div
           className={`lg:col-span-6 xl:col-span-7 flex flex-col h-full min-h-[500px] ${
             mobileView === "document" ? "block" : "hidden lg:block"
@@ -347,10 +421,11 @@ export default function WorkspaceClient() {
             onReanalyze={handleReanalyze}
             activeQuote={activeQuote}
             isReanalyzing={isReanalyzing}
+            isSample={isSample}
           />
         </div>
 
-        {/* Right Column: Analysis Panel (Desktop: 6 cols, Mobile: toggleable) */}
+        {/* Right Column: Analysis Panel (Desktop: 5/6 cols, Mobile: toggleable) */}
         <div
           className={`lg:col-span-6 xl:col-span-5 flex flex-col h-full bg-paper-50 border border-paper-border rounded-2xl shadow-paper overflow-hidden ${
             mobileView === "analysis" ? "block" : "hidden lg:block"
@@ -447,6 +522,8 @@ export default function WorkspaceClient() {
                   flags={flags}
                   onSelectQuote={handleSelectQuote}
                   activeQuote={activeQuote}
+                  lang={currentLang}
+                  sarvamEnabled={sarvamEnabled}
                 />
               </div>
             )}
@@ -463,6 +540,8 @@ export default function WorkspaceClient() {
                   onSelectQuote={handleSelectQuote}
                   activeQuote={activeQuote}
                   isSample={isSample}
+                  lang={currentLang}
+                  sarvamEnabled={sarvamEnabled}
                 />
               </div>
             )}

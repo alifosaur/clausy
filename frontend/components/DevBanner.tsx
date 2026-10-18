@@ -36,11 +36,16 @@ export function DevBanner() {
           API_URL: <strong className="text-ink">{API_URL}</strong>
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-ink">
+      <div className="flex flex-wrap items-center gap-1.5 text-ink">
         <span className="text-ink-muted">Last /extract:</span>
         {stats ? (
           <span className="font-semibold bg-paper-50 px-2 py-0.5 rounded border border-paper-border">
             Status {stats.status} ({stats.durationMs}ms)
+            {stats.timing && (
+              <span className="text-[10px] text-ink-muted font-normal ml-1.5">
+                [T: {stats.timing.transcribe ?? "-"}ms | A: {stats.timing.analyze ?? "-"}ms | V: {stats.timing.verify ?? "-"}ms]
+              </span>
+            )}
           </span>
         ) : (
           <span className="text-ink-muted italic">none yet</span>

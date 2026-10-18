@@ -23,6 +23,18 @@ Rental agreements across urban India are notoriously lengthy, confusing, and pac
 
 ---
 
+## 🤖 What Each Model Does
+
+Clausy adheres to strict separation of concerns across models and code:
+
+| Component | Responsibility | Models / Technology |
+|---|---|---|
+| **Gemma 4 (Core Model)** | Reads page images via multimodal vision, transcribes text verbatim, extracts financial terms, reasons over clauses to detect ambiguities, and answers tenant questions. | `google/gemma-4-26b-a4b-it` / `gemma-4-26b-a4b-it` |
+| **Sarvam AI (Language Layer)** | Translates answers & flags to Kannada and Hindi; synthesizes text-to-speech audio; transcribes tenant voice questions to text. | Mayura (`mayura:v1`), Bulbul v3 (`bulbul:v3`), Saaras v3 (`saaras:v3`) |
+| **Deterministic Code** | Verifies every cited quote character-by-character against raw extracted text. **Note**: AI translations are not verified by the quote check; the original English clause is the verified source. | Python & TypeScript Verification Engine |
+
+---
+
 ## 🏗️ Architecture & Service Boundary
 
 Clausy is organized into two strictly decoupled services:
@@ -128,8 +140,14 @@ cp .env.example .env
 | `GEMMA_API_KEY` | Google Gemini API Key (kept secret) | `your_secret_api_key_here` |
 | `GEMMA_API_URL` | Base API endpoint URL | `https://generativelanguage.googleapis.com/v1beta` |
 | `GEMMA_MODEL` | Target Gemma 4 model identifier | `gemma-4-26b-a4b-it` |
+| `SARVAM_API_KEY` | Sarvam AI API Subscription Key | `your_sarvam_api_key` |
+| `SARVAM_ENABLED` | Toggle Sarvam language layer (true/false) | `true` |
+| `SARVAM_STT_MODEL` | Speech-to-text model identifier | `saaras:v3` |
+| `SARVAM_TTS_MODEL` | Text-to-speech model identifier | `bulbul:v3` |
+| `SARVAM_TRANSLATE_MODEL` | Translation model identifier | `mayura:v1` |
 | `ALLOWED_ORIGINS` | Permitted CORS origins | `http://localhost:3000` |
 | `MOCK_MODE` | Fallback to mock responses without calling API | `false` |
+
 
 **Run Backend Server**:
 ```bash
@@ -224,7 +242,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 
 - **Not Legal Advice**: Clausy is an educational document reader, not a law firm. Clausy does not provide legal representation or binding legal advice.
 - **Copy Standard**: Ambiguities are presented as *"worth asking your landlord"*. Clausy strictly avoids normative claims such as *"illegal"*, *"unfair"*, *"overcharged"*, or assertions about what is normal in Bengaluru.
-- **Privacy Notice**: Clausy itself stores nothing. Pages are processed by Google's hosted Gemini API running Gemma 4; check Google's data policy before uploading private documents.
+- **Privacy Notice**: Audio and text you submit for translation or speech are processed by Sarvam AI. Document pages are processed by Google's hosted Gemini API running Gemma 4. Clausy itself stores nothing. Check provider data policies before uploading private documents.
 
 ---
 

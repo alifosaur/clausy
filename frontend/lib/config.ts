@@ -21,5 +21,9 @@ export const TEAM_NAME = "judgesnightmareee";
 export const HACKATHON_TRACK = "Track 1: Best Use of Gemma 4";
 export const PROBLEM_STATEMENT = "G3";
 
+export const SARVAM_DATA_POLICY_NOTICE =
+  "Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.";
+
 export const DATA_POLICY_NOTICE =
-  `Clausy itself stores nothing. Pages are processed by ${PROVIDER_NAME}, which hosts Gemma 4; check their data policy before uploading private documents.`;
+  `Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing. Document pages are processed by ${PROVIDER_NAME} hosting Gemma 4.`;
+

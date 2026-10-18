@@ -77,7 +77,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
-      <body className="min-h-screen bg-paper text-ink font-sans antialiased flex flex-col selection:bg-highlighter-solid selection:text-ink">
+      <body suppressHydrationWarning className="min-h-screen bg-paper text-ink font-sans antialiased flex flex-col selection:bg-highlighter-solid selection:text-ink">
         {/* Skip to content link for accessibility */}
         <a href="#main-content" className="skip-to-content">
           Skip to content

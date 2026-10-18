@@ -15,6 +15,7 @@ const cspHeader = `
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data:;
+  media-src 'self' blob: data:;
   font-src 'self' data:;
   connect-src ${connectSources.join(" ")};
   frame-ancestors 'none';
@@ -44,7 +45,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+            value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()",
           },
           {
             key: "Content-Security-Policy",

@@ -1,4 +1,13 @@
-import { ExtractResponse, AnswerItem, HealthResponse, ApiError } from "./types";
+import {
+  ExtractResponse,
+  AnswerItem,
+  HealthResponse,
+  ApiError,
+  AppLanguage,
+  TranslateResponse,
+  SpeakResponse,
+  TranscribeResponse,
+} from "./types";
 import { getMockHealth, getMockExtract, getMockAsk, PRESET_QUESTIONS } from "./mock";
 
 export { PRESET_QUESTIONS };
@@ -10,6 +19,12 @@ export interface ExtractStats {
   status: number | string;
   durationMs: number;
   timestamp: number;
+  timing?: {
+    transcribe?: number;
+    analyze?: number;
+    verify?: number;
+    total?: number;
+  };
 }
 
 let lastExtractStats: ExtractStats | null = null;
@@ -18,8 +33,12 @@ export function getLastExtractStats(): ExtractStats | null {
   return lastExtractStats;
 }
 
-export function recordExtractStats(status: number | string, durationMs: number) {
-  lastExtractStats = { status, durationMs, timestamp: Date.now() };
+export function recordExtractStats(
+  status: number | string,
+  durationMs: number,
+  timing?: ExtractStats["timing"]
+) {
+  lastExtractStats = { status, durationMs, timestamp: Date.now(), timing };
 }
 
 export type ReasonCategory = "rate limit" | "provider unavailable" | "invalid image" | "server down";
@@ -190,10 +209,18 @@ export async function extract(files?: File[], options?: ExtractOptions): Promise
     const res = await fetch(`${API_URL}/extract`, {
       method: "POST",
       body: formData,
+      signal: AbortSignal.timeout(120000),
     });
 
     const durationMs = Math.round(performance.now() - start);
-    recordExtractStats(res.status, durationMs);
+    const timingHdr = res.headers.get("x-timing-ms") || res.headers.get("X-Timing-Ms");
+    let timing: ExtractStats["timing"] = undefined;
+    if (timingHdr) {
+      try {
+        timing = JSON.parse(timingHdr);
+      } catch {}
+    }
+    recordExtractStats(res.status, durationMs, timing);
 
     if (!res.ok) {
       const errorJson = await res.json().catch(() => ({}));
@@ -280,3 +307,154 @@ export async function ask(
     );
   }
 }
+
+/**
+ * In-memory translation cache (per session, memory-only, no localStorage).
+ * Key format: `${targetLanguage}:${originalText}`
+ */
+const translationCache = new Map<string, string>();
+
+export function clearTranslationCache(): void {
+  translationCache.clear();
+}
+
+/**
+ * Translates an array of text snippets to target language ("kn" | "hi" | "en").
+ * If target is "en", returns texts unmodified.
+ * Uses in-memory cache to avoid duplicate translations.
+ */
+export async function translateTexts(
+  texts: string[],
+  target: AppLanguage
+): Promise<string[]> {
+  if (!texts || texts.length === 0 || target === "en") {
+    return texts;
+  }
+
+  const results = new Array<string>(texts.length);
+  const uncachedIndices: number[] = [];
+  const uncachedTexts: string[] = [];
+
+  texts.forEach((t, idx) => {
+    if (!t || !t.trim()) {
+      results[idx] = t;
+      return;
+    }
+    const cacheKey = `${target}:${t}`;
+    if (translationCache.has(cacheKey)) {
+      results[idx] = translationCache.get(cacheKey)!;
+    } else {
+      uncachedIndices.push(idx);
+      uncachedTexts.push(t);
+    }
+  });
+
+  if (uncachedTexts.length === 0) {
+    return results;
+  }
+
+  if (USE_MOCK) {
+    uncachedTexts.forEach((t, i) => {
+      const origIdx = uncachedIndices[i];
+      const prefix = target === "kn" ? "[ಕನ್ನಡ] " : "[हिन्दी] ";
+      const translated = `${prefix}${t}`;
+      translationCache.set(`${target}:${t}`, translated);
+      results[origIdx] = translated;
+    });
+    return results;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/translate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ texts: uncachedTexts, target }),
+    });
+
+    if (!res.ok) {
+      const errorJson = await res.json().catch(() => ({}));
+      throw new ApiError(errorJson.detail || `Translate failed with status ${res.status}`, res.status);
+    }
+
+    const data: TranslateResponse = await res.json();
+    data.texts.forEach((translated, i) => {
+      const origIdx = uncachedIndices[i];
+      const origText = uncachedTexts[i];
+      translationCache.set(`${target}:${origText}`, translated);
+      results[origIdx] = translated;
+    });
+
+    return results;
+  } catch (err: unknown) {
+    if (err instanceof ApiError) throw err;
+    const msg = err instanceof Error ? err.message : "Translation network error";
+    throw new ApiError(`Translation failed: ${msg}`, 0, "TRANSLATE_FAILED");
+  }
+}
+
+/**
+ * Synthesizes text into spoken audio via Sarvam Bulbul v3.
+ * Returns an audio data URI (data:audio/wav;base64,...) ready for playback.
+ */
+export async function speakText(text: string, lang: AppLanguage): Promise<string> {
+  if (!text || !text.trim()) {
+    throw new ApiError("Text cannot be empty", 400);
+  }
+
+  if (USE_MOCK) {
+    return "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+  }
+
+  const res = await fetch(`${API_URL}/speak`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ text: text.slice(0, 800), lang }),
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new ApiError(errorJson.detail || `Speech synthesis failed with status ${res.status}`, res.status);
+  }
+
+  const data: SpeakResponse = await res.json();
+  return `data:${data.content_type || "audio/wav"};base64,${data.audio}`;
+}
+
+/**
+ * Transcribes audio blob using Sarvam Saaras v3.
+ * Returns { text, language }.
+ */
+export async function transcribeAudio(
+  audioBlob: Blob,
+  filename: string = "recording.webm"
+): Promise<{ text: string; language: string }> {
+  if (USE_MOCK) {
+    return {
+      text: "What is the security deposit refund timeline?",
+      language: "en-IN",
+    };
+  }
+
+  const formData = new FormData();
+  formData.append("file", audioBlob, filename);
+
+  const res = await fetch(`${API_URL}/transcribe`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new ApiError(errorJson.detail || `Transcription failed with status ${res.status}`, res.status);
+  }
+
+  const data: TranscribeResponse = await res.json();
+  return data;
+}
+

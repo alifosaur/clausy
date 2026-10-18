@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Camera,
   Lock,
+  Sparkles,
 } from "lucide-react";
 import { GEMMA_MODEL_NAME, DATA_POLICY_NOTICE } from "@/lib/config";
 import { EVAL_TEST_RESULTS, EVALUATION_NOTE } from "@/lib/evalResults";
@@ -339,6 +340,41 @@ export default function HowWeVerifyPage() {
         </div>
       </section>
 
+      {/* What Each Model Does */}
+      <section className="mb-16" aria-labelledby="models-architecture-heading">
+        <div className="p-6 sm:p-8 rounded-2xl bg-paper-50 border border-paper-border shadow-paper space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-ink flex-shrink-0" />
+            <h2 id="models-architecture-heading" className="font-serif text-xl sm:text-2xl font-semibold text-ink">
+              What Each Model Does
+            </h2>
+          </div>
+          <p className="text-sm text-ink-muted leading-relaxed">
+            Clausy keeps a strict separation of concerns across AI components and verification code:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-2">
+              <strong className="text-sm text-ink font-semibold block">Gemma 4 (Core Model)</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Reads page images via multimodal vision, transcribes text verbatim, extracts financial terms, reasons over conflicting clauses, and answers tenant questions.
+              </p>
+            </div>
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-2">
+              <strong className="text-sm text-ink font-semibold block">Sarvam AI (Language Layer)</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Powers Indic language accessibility: Mayura for Kannada and Hindi translations, Bulbul v3 for text-to-speech voice playback, and Saaras v3 for speech-to-text audio questions.
+              </p>
+            </div>
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-2">
+              <strong className="text-sm text-ink font-semibold block">Code Verifier</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Runs deterministic quote verification in Python and TypeScript. Note: AI translations are not verified by the quote check; the original English clause is the verified source.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 5. "Where your document goes" (Honest Disclosure) */}
       <section className="mb-16" aria-labelledby="data-privacy-heading">
         <div className="p-6 sm:p-8 rounded-2xl bg-paper-100 border border-paper-border shadow-paper">
@@ -351,7 +387,7 @@ export default function HowWeVerifyPage() {
                 Where Your Document Goes
               </h2>
               <p className="text-sm text-ink-muted leading-relaxed">
-                We believe in full transparency regarding document processing. When you upload pages, they are sent to a hosted instance of the <strong className="text-ink font-semibold">{GEMMA_MODEL_NAME}</strong> model strictly for reading and clause extraction.
+                We believe in full transparency regarding document processing. When you upload pages, they are sent to a hosted instance of the <strong className="text-ink font-semibold">{GEMMA_MODEL_NAME}</strong> model strictly for reading and clause extraction. Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.
               </p>
               <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
                 <li>

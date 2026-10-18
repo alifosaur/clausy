@@ -50,12 +50,39 @@ export interface AskResponse extends AnswerItem {
   pageNumber?: number;
 }
 
+export type AppLanguage = "en" | "kn" | "hi";
+
 export interface HealthResponse {
   status: "ok" | "healthy" | "degraded" | string;
   service?: string;
   gemmaReady?: boolean;
+  sarvam_enabled?: boolean;
   version?: string;
   timestamp?: string;
+}
+
+export interface TranslateRequest {
+  texts: string[];
+  target: AppLanguage;
+}
+
+export interface TranslateResponse {
+  texts: string[];
+}
+
+export interface SpeakRequest {
+  text: string;
+  lang: AppLanguage;
+}
+
+export interface SpeakResponse {
+  audio: string;
+  content_type: string;
+}
+
+export interface TranscribeResponse {
+  text: string;
+  language: string;
 }
 
 export interface FinancialMetrics {

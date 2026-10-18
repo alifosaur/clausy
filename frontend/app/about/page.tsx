@@ -6,6 +6,7 @@ import {
   MessageSquare,
   ExternalLink,
   Scale,
+  Sparkles,
 } from "lucide-react";
 import {
   GITHUB_REPO_URL,
@@ -143,16 +144,55 @@ export default function AboutPage() {
             </div>
 
             <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-1.5">
-              <strong className="text-xs sm:text-sm text-ink block">Small Test Sample</strong>
+              <strong className="text-xs sm:text-sm text-ink block">Translations Unverified</strong>
               <p className="text-xs text-ink-muted leading-relaxed">
-                The benchmark test suite has been evaluated against a focused set of tenancy agreements; expanded validation is ongoing.
+                Kannada and Hindi translations are produced by Sarvam AI. AI translations are not verified by the quote check; the original English clause is the verified source.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 5. Privacy & Data Handling */}
+      {/* 5. What Each Model Does */}
+      <section className="mb-14" aria-labelledby="models-heading">
+        <div className="p-6 sm:p-8 rounded-2xl bg-paper-50 border border-paper-border shadow-paper space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-ink flex-shrink-0" />
+            <h2 id="models-heading" className="font-serif text-xl sm:text-2xl font-semibold text-ink">
+              What Each Model Does
+            </h2>
+          </div>
+
+          <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+            Clausy pairs Google Gemma 4, Sarvam AI, and deterministic code in a strict architecture where each layer has a single responsibility:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-1.5">
+              <strong className="text-xs sm:text-sm text-ink block font-semibold">Gemma 4 (Core Model)</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Reads page images via multimodal vision, transcribes verbatim clauses, extracts key lease parameters, reasons over interacting conditions to surface flags, and answers tenant questions.
+              </p>
+            </div>
+
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-1.5">
+              <strong className="text-xs sm:text-sm text-ink block font-semibold">Sarvam AI (Language Layer)</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Handles Kannada and Hindi translation (Mayura), text-to-speech voice synthesis (Bulbul v3), and speech-to-text audio input (Saaras v3). Gemma remains the core reader; Sarvam is used strictly for translation and speech.
+              </p>
+            </div>
+
+            <div className="p-4 bg-paper-100 rounded-xl border border-paper-border space-y-1.5">
+              <strong className="text-xs sm:text-sm text-ink block font-semibold">Deterministic Code (Verification)</strong>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Verifies every cited quote character-by-character against the extracted document. If a quote is not found verbatim in the agreement text, it is withheld or marked unverified. Note: translations are not verified by the quote check.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Privacy & Data Handling */}
       <section className="mb-14" aria-labelledby="privacy-heading">
         <div className="p-6 sm:p-8 rounded-2xl bg-paper-50 border border-paper-border shadow-paper space-y-3">
           <div className="flex items-center gap-2">
@@ -167,8 +207,9 @@ export default function AboutPage() {
           </p>
 
           <ul className="space-y-2 text-xs sm:text-sm text-ink-muted list-disc list-inside">
-            <li>Your uploaded files are loaded into browser memory and sent over secure HTTPS directly to the hosted model.</li>
-            <li>No pages or extracted texts are stored on Clausy servers, saved to disk, or preserved in databases.</li>
+            <li>Audio and text you submit for translation or speech are processed by Sarvam AI. Clausy itself stores nothing.</li>
+            <li>Your uploaded page photos are loaded into browser memory and sent over secure HTTPS directly to the hosted model for extraction.</li>
+            <li>No pages, audio files, or extracted texts are stored on Clausy servers, saved to disk, or preserved in databases.</li>
             <li>{DATA_POLICY_NOTICE}</li>
             <li>Once you leave or close your browser tab, your uploaded document state is completely wiped from browser memory.</li>
           </ul>
