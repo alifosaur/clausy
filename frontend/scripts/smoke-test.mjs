@@ -235,6 +235,61 @@ async function main() {
     assert.strictEqual(categorizeError(new Error("Failed to fetch / connection refused")).category, "server down");
   });
 
+  // TEST 9: Find in Document matching function (using real TypeScript module lib/search.ts)
+  await runTest("Find in Document: Real TypeScript Search Module Matching Unit Tests", async () => {
+    // Dynamic import of the real TypeScript module
+    const { findMatchesInText, findSearchMatches, escapeRegExp } = await import("../lib/search.ts");
+    assert.strictEqual(typeof findMatchesInText, "function", "findMatchesInText must be exported");
+    assert.strictEqual(typeof findSearchMatches, "function", "findSearchMatches must be exported");
+    assert.strictEqual(typeof escapeRegExp, "function", "escapeRegExp must be exported");
+
+    const sampleText = "The monthly rent is Rs. 32,000. Rent must be paid promptly. Irrevocable lock-in period applies.";
+
+    // 1. Whole word match (case-insensitive)
+    const rentMatches = findMatchesInText("rent", sampleText);
+    assert.strictEqual(rentMatches.length, 2, "Should find 'rent' and 'Rent'");
+    assert.strictEqual(rentMatches[0].matchedText, "rent");
+    assert.strictEqual(rentMatches[1].matchedText, "Rent");
+    assert.strictEqual(sampleText.substring(rentMatches[0].startIndex, rentMatches[0].endIndex), "rent");
+    assert.strictEqual(sampleText.substring(rentMatches[1].startIndex, rentMatches[1].endIndex), "Rent");
+
+    // 2. Partial word match
+    const lockMatches = findMatchesInText("lock", sampleText);
+    assert.strictEqual(lockMatches.length, 1, "Should find partial match 'lock' inside 'lock-in'");
+    assert.strictEqual(lockMatches[0].matchedText, "lock");
+    assert.strictEqual(sampleText.substring(lockMatches[0].startIndex, lockMatches[0].endIndex), "lock");
+
+    // 3. Regex special character handling (e.g. Rs., numbers, parentheses)
+    const regexSafeMatches = findMatchesInText("Rs.", sampleText);
+    assert.strictEqual(regexSafeMatches.length, 1, "Should safely match literal 'Rs.' with dot escaped");
+    assert.strictEqual(regexSafeMatches[0].matchedText, "Rs.");
+
+    const parensText = "Tenancy term is 11 (eleven) months with ₹32,000/- deposit.";
+    const parenMatches = findMatchesInText("(eleven)", parensText);
+    assert.strictEqual(parenMatches.length, 1, "Should safely match literal '(eleven)' with parens escaped");
+    assert.strictEqual(parenMatches[0].matchedText, "(eleven)");
+
+    // 4. Multi-page document matching
+    const testPages = [
+      { pageNumber: 1, text: "The monthly rent is Rs. 32,000. Irrevocable lock-in is 6 months." },
+      { pageNumber: 2, text: "Notice period is 2 months. Repainting charge is one month rent Rs. 32,000." },
+    ];
+    const multiPageMatches = findSearchMatches("rent", testPages);
+    assert.strictEqual(multiPageMatches.length, 2, "Should find 'rent' across both pages");
+    assert.strictEqual(multiPageMatches[0].pageNumber, 1, "First match on page 1");
+    assert.strictEqual(multiPageMatches[1].pageNumber, 2, "Second match on page 2");
+
+    // 5. Empty / whitespace query returns empty array
+    assert.deepStrictEqual(findMatchesInText("", sampleText), []);
+    assert.deepStrictEqual(findMatchesInText("   ", sampleText), []);
+    assert.deepStrictEqual(findSearchMatches("", testPages), []);
+    assert.deepStrictEqual(findSearchMatches("   ", testPages), []);
+
+    // 6. No matches returns empty array
+    const noMatches = findSearchMatches("nonexistent_clause_xyz", testPages);
+    assert.deepStrictEqual(noMatches, []);
+  });
+
   console.log(`\n=========================================`);
   console.log(`  RESULTS: ${passed}/${total} TESTS PASSED  `);
   console.log(`=========================================\n`);

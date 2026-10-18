@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node scripts/smoke-test.mjs"
+    "test": "node --experimental-strip-types --no-warnings scripts/smoke-test.mjs"
   },
   "dependencies": {
     "gsap": "3.12.5",
