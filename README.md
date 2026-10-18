@@ -4,8 +4,8 @@
 > Upload photos of agreement pages; Gemma reads them; code verifies every quote; answers are cited or refused.
 
 **Hackathon**: Track 1, Best Use of Gemma 4 · **Problem Statement**: G3 (Agreement Clarity & Anti-Hallucination)  
-**Team**: `judgesnightmareee`  
-**Built**: 13–18 October 2026  
+**Team**: `judgesnightmare`  
+**Built**: 17–18 October 2026  
 **Repository**: [https://github.com/alifosaur/clausy](https://github.com/alifosaur/clausy)  
 **License**: Open Source (MIT)
 
@@ -212,75 +212,6 @@ Deploy `frontend/` as a Next.js project on [Vercel](https://vercel.com):
 
 ---
 
-## 📋 The 60-Item Production Checklist
-
-All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
-
-| # | Item | Status | One-line Reason / Implementation Detail |
-|---|---|---|---|
-| **1** | Responsive | Checked in Chrome only | Fluid grid layouts, 2-tab switch on mobile, desktop split view tested down to 360px in Chrome emulation. |
-| **2** | Consistent UI | Done | Strict token system: warm paper `#FAF8F5`, ink `#141413`, highlighter yellow `#FFE600`. |
-| **3** | Navbar | Done | Semantic `<header>` and `<nav>` with Fraunces brand, active states, and mobile menu. |
-| **4** | Working buttons/links | Done | All CTA buttons, preset chips, tabs, modals, and route links thoroughly verified in code. |
-| **5** | Fast loading | Done | Next.js 15 App Router static generation; sub-130 kB first-load JS bundle. |
-| **6** | Accessibility | Done | Semantic landmarks, skip-to-content link, WCAG AA compliance, and `prefers-reduced-motion` support. |
-| **7** | Readable type + contrast | Done | Fraunces serif headlines, Inter UI; darkened ink-light `#66625B` ensuring >= 4.5:1 ratio. |
-| **8** | Form validation | Done | Client and backend checks for JPG/PNG magic bytes, 10 MB size, 5-page count, 500-char questions. |
-| **9** | Loading | Done | Staged "Reading page X of Y...", spinners, elapsed-seconds counter, and dedicated `app/loading.tsx`. |
-| **10** | Error | Done | Friendly categorized error banners, `app/error.tsx`, and `app/global-error.tsx` with retry triggers. |
-| **11** | Empty | Done | Dedicated empty state on `/workspace` directing back to home to upload an agreement. |
-| **12** | Toasts | Done | Paper-styled toast notifications for quote copy feedback and document re-analysis. |
-| **13** | Custom 404 | Done | Editorial paper-styled 404 page in `app/not-found.tsx` with return-to-home actions. |
-| **14** | Favicon + title | Done | Custom SVG highlighter favicon (`public/favicon.svg`) and unique title on all routes. |
-| **15** | Clean URLs | Done | Clean canonical routes: `/`, `/workspace`, `/how-we-verify`, `/about`. |
-| **16** | Meta title/description | Done | Unique title, description, and canonical URL configured for every page in Next.js metadata. |
-| **17** | Open Graph | Done | Edge-rendered Open Graph & Twitter cards generated via `next/og` (`app/opengraph-image.tsx`). |
-| **18** | Semantic HTML | Done | Semantic `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<table>`, `<footer>`. |
-| **19** | Image optimization + alt | Done | Alt text for document scans and upload preview thumbnails. |
-| **20** | HTTPS (Vercel) | Pending live verification | Automated SSL certificate provisioning configured on Vercel; pending live deployment confirmation. |
-| **21** | Secure input validation | Done | Pydantic v2 models in FastAPI, image pixel limit (40M), payload inspection, and file limits. |
-| **22** | No exposed secrets | Done | Frontend contains zero AI keys; backend `.env` is strictly gitignored. |
-| **23** | Auth | N/A | No user accounts, logins, or authentication required by design. |
-| **24** | Privacy section | Done | Clausy itself stores nothing. Pages and text are processed by third-party AI providers (the model host and Sarvam AI); check their data policies before uploading private documents. |
-| **25** | Terms/not-legal-advice | Done | Plain-language "Not legal advice" notices in header, footer, `/about`, and analysis tabs. |
-| **26** | Cookie consent | N/A | Zero cookies, zero tracking pixels, zero analytics scripts used. |
-| **27** | Contact info | Done | Direct link to GitHub Issues and repository on `/about` and footer. |
-| **28** | Search | Done | In-workspace Find in document searching extracted text with match count, Enter/Shift+Enter navigation, marker highlighting, and scrolling. |
-| **29** | Dark mode | N/A | Intentional warm paper-white and near-black ink editorial design system by design. |
-| **30** | Smooth animations | Done | GSAP marker wipe animations and CSS fades respecting `prefers-reduced-motion`. |
-| **31** | Confirm dialog | Done | Accessible modal dialog (`ConfirmDialog.tsx`) before clearing uploaded pages. |
-| **32** | Breadcrumbs | N/A | Flat 4-route architecture with single obvious next action requires no breadcrumbs. |
-| **33** | Sitemap | Done | Dynamic XML sitemap generated at `app/sitemap.ts` with 4 canonical routes. |
-| **34** | Robots.txt | Done | Search crawler directives generated at `app/robots.ts` referencing dynamic sitemap. |
-| **35** | Analytics | N/A | Privacy-first architecture with zero user surveillance or third-party telemetry. |
-| **36** | Performance | Done | Dynamically imported GSAP, font display swap, and zero heavy 3D bundles. |
-| **37** | Cross-browser | Checked in Chrome only | Built with standard CSS/HTML; verified in Chrome only, cross-browser testing pending manual confirmation. |
-| **38** | Keyboard nav | Checked in Chrome only | Full Arrow/Enter/Tab keyboard navigation and search shortcuts implemented; checked in Chrome only. |
-| **39** | Focus indicators | Done | High-visibility focus rings (`focus-visible:ring-2 focus-visible:ring-ink`) on all interactive controls. |
-| **40** | Screen-reader labels | Done | Explicit `aria-label`, `aria-live`, `aria-selected`, and `role` attributes throughout. |
-| **41** | Database | N/A | Stateless in-memory processing with zero database storage for tenant confidentiality. |
-| **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
-| **43** | Rate limiting + limits | Pending live verification | Client 10 MB / 5-page limits and backend SlowAPI IP rate limiting implemented; pending live load verification. |
-| **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
-| **45** | Testing (Eval set) | Done | 60 backend pytest tests, 11 frontend tests (8 smoke tests + 1 search unit test + 1 validation unit test + 1 audio WAV encoding unit test using real TypeScript modules). Frontend smoke tests check standalone copies of the logic; backend tests mock the model. |
-| **46** | Backups | N/A | Zero user data or documents retained. |
-| **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
-| **48** | Reliable deployment | Pending live verification | Render and Vercel build settings and deployment configurations prepared; pending live production deployment. |
-| **49** | Env var management | Done | Documented in `frontend/.env.example` and `backend/.env.example`. |
-| **50** | Footer | Done | Semantic footer with MIT license, GitHub repo link, and disclaimer on every view. |
-| **51** | Spacing/design system | Done | Standardized 4/8/16/24/32px scale, soft paper borders, and authentic shadows. |
-| **52** | No dead links | Not yet verified | Internal routes and repository links wired; full automated crawl not yet verified. |
-| **53** | No horizontal overflow | Checked in Chrome only | Verified in Chrome DevTools responsive emulation at 360px viewport without overflow. |
-| **54** | Onboarding | Done | Three-step walkthrough on landing page detailing the verification pipeline. |
-| **55** | First-time states | Done | Dedicated empty state on `/workspace` directing back to home to upload an agreement. |
-| **56** | Password reset | N/A | No user accounts or passwords exist. |
-| **57** | Profiles | N/A | No tenant profiles exist. |
-| **58** | Export/deletion | N/A | Nothing stored; data purges automatically on browser tab closure. |
-| **59** | README | Done | Complete documentation with architecture, setup, roadmap, and honest 60-item checklist. |
-| **60** | Dependency hygiene | Done | Pin versions in `package.json` and `requirements.txt`; `npm audit` run. |
-
----
-
 ## 🗺️ Roadmap
 
 - **Accounts and Authentication**: Optional tenant profiles to securely save, organize, and compare rental agreements across multiple tenancies.
@@ -298,5 +229,5 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 
 ---
 
-Built with ❤️ by **Team judgesnightmareee** for the Gemma 4 Hackathon (13–18 Oct 2026).
+Built with ❤️ by **Judgesnightmare** for the Gemma 4 Hackathon (13–18 Oct 2026).
 
