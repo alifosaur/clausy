@@ -5,7 +5,7 @@ import { FlagItem, AppLanguage } from "@/lib/types";
 import { useToast } from "./Toast";
 import { translateTexts } from "@/lib/api";
 import { ListenButton } from "./ListenButton";
-import { Copy, Check, MessageSquare, ArrowUpRight, HelpCircle, Languages } from "lucide-react";
+import { Copy, Check, MessageSquare, ArrowUpRight, HelpCircle, Languages, AlertCircle } from "lucide-react";
 
 interface WorthClarifyingTabProps {
   flags: FlagItem[];
@@ -29,6 +29,7 @@ export function WorthClarifyingTab({
   const [translatedReasons, setTranslatedReasons] = useState<string[]>([]);
   const [translatedQuestions, setTranslatedQuestions] = useState<string[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -36,10 +37,12 @@ export function WorthClarifyingTab({
     if (lang === "en" || !flags || flags.length === 0) {
       setTranslatedReasons(flags.map((f) => f.reason));
       setTranslatedQuestions(flags.map((f) => f.question));
+      setTranslationError(null);
       return;
     }
 
     setIsTranslating(true);
+    setTranslationError(null);
     const reasons = flags.map((f) => f.reason);
     const questions = flags.map((f) => f.question);
     const allTexts = [...reasons, ...questions];
@@ -49,11 +52,13 @@ export function WorthClarifyingTab({
         if (!active) return;
         setTranslatedReasons(translated.slice(0, reasons.length));
         setTranslatedQuestions(translated.slice(reasons.length));
+        setTranslationError(null);
       })
       .catch(() => {
         if (!active) return;
         setTranslatedReasons(reasons);
         setTranslatedQuestions(questions);
+        setTranslationError("Translation is unavailable right now. Showing original English text.");
       })
       .finally(() => {
         if (active) setIsTranslating(false);
@@ -97,6 +102,26 @@ export function WorthClarifyingTab({
         </div>
       )}
 
+      {/* Visible Translation Error Notice */}
+      {translationError && (
+        <div
+          role="alert"
+          className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-ink flex items-center justify-between gap-2"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <span>{translationError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTranslationError(null)}
+            className="text-[11px] font-mono text-ink-muted hover:text-ink flex-shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Flags List: 2-4 flags with side-by-side source clauses and question to landlord */}
       <div className="space-y-5">
         {flags.map((flag, idx) => {
@@ -119,14 +144,13 @@ export function WorthClarifyingTab({
                     {flag.title}
                   </h4>
                 </div>
-                {sarvamEnabled && (
-                  <ListenButton
-                    text={listenContent}
-                    lang={lang}
-                    label="Listen"
-                    className="flex-shrink-0"
-                  />
-                )}
+                <ListenButton
+                  text={listenContent}
+                  lang={lang}
+                  label="Listen"
+                  sarvamEnabled={sarvamEnabled}
+                  className="flex-shrink-0"
+                />
               </div>
 
               {/* Explanation / Reason */}
@@ -184,14 +208,13 @@ export function WorthClarifyingTab({
                     Question to ask your landlord
                   </span>
                   <div className="flex items-center gap-2">
-                    {sarvamEnabled && (
-                      <ListenButton
-                        text={displayQuestion}
-                        lang={lang}
-                        label="Hear"
-                        className="text-[10px] py-0.5 px-2"
-                      />
-                    )}
+                    <ListenButton
+                      text={displayQuestion}
+                      lang={lang}
+                      label="Hear"
+                      sarvamEnabled={sarvamEnabled}
+                      className="text-[10px] py-0.5 px-2"
+                    />
                     <button
                       type="button"
                       onClick={() => handleCopyQuestion(displayQuestion, idx)}

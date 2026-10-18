@@ -10,6 +10,7 @@ interface ListenButtonProps {
   lang?: AppLanguage;
   className?: string;
   label?: string;
+  sarvamEnabled?: boolean;
 }
 
 type PlayerState = "idle" | "loading" | "playing" | "error";
@@ -19,6 +20,7 @@ export function ListenButton({
   lang = "en",
   className = "",
   label = "Listen",
+  sarvamEnabled = true,
 }: ListenButtonProps) {
   const [state, setState] = useState<PlayerState>("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -80,13 +82,16 @@ export function ListenButton({
   };
 
   const getAriaLabel = () => {
+    if (!sarvamEnabled) {
+      return "Voice playback is disabled. Set SARVAM_API_KEY in backend to enable.";
+    }
     switch (state) {
       case "loading":
         return "Generating audio speech with Sarvam Bulbul v3...";
       case "playing":
         return "Stop audio playback";
       case "error":
-        return "Audio playback failed. Click to retry.";
+        return "Voice synthesis is unavailable right now. Click to retry.";
       case "idle":
       default:
         return `${label}: Listen to text with Sarvam text-to-speech`;
@@ -97,11 +102,13 @@ export function ListenButton({
     <button
       type="button"
       onClick={handleToggle}
-      disabled={state === "loading"}
+      disabled={!sarvamEnabled || state === "loading"}
       aria-label={getAriaLabel()}
       title={getAriaLabel()}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ink ${
-        state === "playing"
+        !sarvamEnabled
+          ? "bg-paper-100 text-ink-muted/40 border border-paper-border cursor-not-allowed opacity-60"
+          : state === "playing"
           ? "bg-ink text-paper shadow-sm animate-pulse"
           : state === "error"
           ? "bg-amber-100 text-amber-800 border border-amber-300"
@@ -119,7 +126,7 @@ export function ListenButton({
           : state === "playing"
           ? "Stop"
           : state === "error"
-          ? "Error"
+          ? "Unavailable"
           : label}
       </span>
     </button>

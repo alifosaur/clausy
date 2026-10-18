@@ -20,6 +20,7 @@ export function getMockHealth(): HealthResponse {
     status: "ok",
     service: "clausy-mock-backend",
     gemmaReady: true,
+    sarvam_enabled: true,
     version: "1.0.0-mock",
     timestamp: new Date().toISOString(),
   };

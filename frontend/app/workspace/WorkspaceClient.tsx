@@ -299,54 +299,70 @@ export default function WorkspaceClient() {
 
         {/* Right Header Controls: Sarvam Language Selector & Mobile View Switcher */}
         <div className="flex items-center gap-2">
-          {/* Sarvam Language Selector: English / ಕನ್ನಡ / हिन्दी (React state only, hidden if SARVAM_ENABLED is false) */}
-          {sarvamEnabled && (
-            <div
-              role="group"
-              aria-label="Select display language"
-              className="inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border text-xs"
-            >
-              <div className="hidden sm:flex items-center pl-2 pr-1 text-ink-muted">
-                <Languages className="w-3.5 h-3.5" />
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentLang("en")}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  currentLang === "en"
-                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-                aria-pressed={currentLang === "en"}
-              >
-                English
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentLang("kn")}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  currentLang === "kn"
-                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-                aria-pressed={currentLang === "kn"}
-              >
-                ಕನ್ನಡ
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentLang("hi")}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  currentLang === "hi"
-                    ? "bg-paper-50 text-ink shadow-sm font-semibold"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-                aria-pressed={currentLang === "hi"}
-              >
-                हिन्दी
-              </button>
+          {/* Sarvam Language Selector: English / ಕನ್ನಡ / हिन्दी (Never hidden; disabled with tooltip if SARVAM_ENABLED is false) */}
+          <div
+            role="group"
+            aria-label="Select display language"
+            title={!sarvamEnabled ? "Sarvam Indic translation is disabled" : undefined}
+            className="inline-flex rounded-xl p-1 bg-paper-200 border border-paper-border text-xs"
+          >
+            <div className="hidden sm:flex items-center pl-2 pr-1 text-ink-muted">
+              <Languages className="w-3.5 h-3.5" />
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setCurrentLang("en")}
+              title="Display in English (Source language)"
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                currentLang === "en"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+              aria-pressed={currentLang === "en"}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              disabled={!sarvamEnabled}
+              onClick={() => setCurrentLang("kn")}
+              title={
+                !sarvamEnabled
+                  ? "Language translation is disabled. Set SARVAM_API_KEY in backend to enable."
+                  : "Translate to Kannada with Sarvam Mayura"
+              }
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                currentLang === "kn"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                  : !sarvamEnabled
+                  ? "text-ink-muted/40 cursor-not-allowed opacity-60"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+              aria-pressed={currentLang === "kn"}
+            >
+              ಕನ್ನಡ
+            </button>
+            <button
+              type="button"
+              disabled={!sarvamEnabled}
+              onClick={() => setCurrentLang("hi")}
+              title={
+                !sarvamEnabled
+                  ? "Language translation is disabled. Set SARVAM_API_KEY in backend to enable."
+                  : "Translate to Hindi with Sarvam Mayura"
+              }
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                currentLang === "hi"
+                  ? "bg-paper-50 text-ink shadow-sm font-semibold"
+                  : !sarvamEnabled
+                  ? "text-ink-muted/40 cursor-not-allowed opacity-60"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+              aria-pressed={currentLang === "hi"}
+            >
+              हिन्दी
+            </button>
+          </div>
 
           {/* Mobile View Switcher (Visible only below lg: 1024px) */}
           <div

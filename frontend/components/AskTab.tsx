@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { DocumentPage, AnswerItem, AppLanguage } from "@/lib/types";
 import { ask, translateTexts, transcribeAudio } from "@/lib/api";
+import { convertBlobTo16kHzMonoWav } from "@/lib/audio";
 import { ListenButton } from "./ListenButton";
 import {
   Send,
@@ -49,6 +50,7 @@ export function AskTab({
   const [currentAnswer, setCurrentAnswer] = useState<AnswerItem | null>(null);
   const [translatedAnswerText, setTranslatedAnswerText] = useState("");
   const [isTranslatingAnswer, setIsTranslatingAnswer] = useState(false);
+  const [answerTranslationError, setAnswerTranslationError] = useState<string | null>(null);
   const [askedQuestion, setAskedQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -79,23 +81,28 @@ export function AskTab({
 
     if (!currentAnswer) {
       setTranslatedAnswerText("");
+      setAnswerTranslationError(null);
       return;
     }
 
     if (lang === "en") {
       setTranslatedAnswerText(currentAnswer.text);
+      setAnswerTranslationError(null);
       return;
     }
 
     setIsTranslatingAnswer(true);
+    setAnswerTranslationError(null);
     translateTexts([currentAnswer.text], lang)
       .then(([trans]) => {
         if (!active) return;
         setTranslatedAnswerText(trans || currentAnswer.text);
+        setAnswerTranslationError(null);
       })
       .catch(() => {
         if (!active) return;
         setTranslatedAnswerText(currentAnswer.text);
+        setAnswerTranslationError("Translation is unavailable right now. Showing original English answer.");
       })
       .finally(() => {
         if (active) setIsTranslatingAnswer(false);
@@ -180,7 +187,9 @@ export function AskTab({
         setIsTranscribing(true);
 
         try {
-          const result = await transcribeAudio(audioBlob, "user_question.webm");
+          const wavBlob = await convertBlobTo16kHzMonoWav(audioBlob);
+          const filename = wavBlob.type === "audio/wav" ? "user_question.wav" : "user_question.webm";
+          const result = await transcribeAudio(wavBlob, filename);
           if (result.text && result.text.trim()) {
             setQuestion(result.text.trim());
             setMicNotice(null);
@@ -188,7 +197,7 @@ export function AskTab({
             setMicNotice("Could not detect any speech in the recording. Please try typing your question.");
           }
         } catch {
-          setMicNotice("Transcription failed. Please check backend connectivity or type your question.");
+          setMicNotice("Voice transcription is unavailable right now. Please check backend connectivity or type your question.");
         } finally {
           setIsTranscribing(false);
         }
@@ -268,9 +277,11 @@ export function AskTab({
         <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between text-xs text-ink font-mono animate-pulse">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
-            <span className="font-semibold text-red-700">Listening to your question...</span>
+            <span className="font-semibold text-red-700">
+              Recording... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}
+            </span>
             <span className="text-ink-muted">
-              {recordingSeconds}s / 30s
+              (max 30s)
             </span>
           </div>
           <button
@@ -288,7 +299,7 @@ export function AskTab({
       {isTranscribing && (
         <div className="p-3 rounded-xl bg-paper-200 border border-paper-border flex items-center gap-2.5 text-xs text-ink font-mono">
           <RotateCw className="w-4 h-4 animate-spin text-ink" />
-          <span>Transcribing voice question with Sarvam Saaras v3...</span>
+          <span>Transcribing...</span>
         </div>
       )}
 
@@ -342,22 +353,34 @@ export function AskTab({
 
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
             {/* Sarvam Voice Input Microphone Button */}
-            {sarvamEnabled && (
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isLoading || isTranscribing}
-                aria-label={isRecording ? "Stop voice recording" : "Ask question using voice microphone"}
-                title={isRecording ? "Stop recording" : "Speak your question (Sarvam Saaras STT)"}
-                className={`p-1.5 rounded-lg border transition-all focus-visible:ring-2 focus-visible:ring-ink ${
-                  isRecording
-                    ? "bg-red-600 text-white border-red-700 animate-pulse"
-                    : "bg-paper-100 hover:bg-paper-200 border-paper-border text-ink"
-                }`}
-              >
-                {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-3.5 h-3.5" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={!sarvamEnabled || isLoading || isTranscribing}
+              aria-label={
+                !sarvamEnabled
+                  ? "Voice question input is disabled"
+                  : isRecording
+                  ? "Stop voice recording"
+                  : "Ask question using voice microphone"
+              }
+              title={
+                !sarvamEnabled
+                  ? "Voice question input is disabled. Set SARVAM_API_KEY in backend to enable."
+                  : isRecording
+                  ? "Stop recording"
+                  : "Speak your question (Sarvam Saaras STT)"
+              }
+              className={`p-1.5 rounded-lg border transition-all focus-visible:ring-2 focus-visible:ring-ink ${
+                !sarvamEnabled
+                  ? "bg-paper-100 text-ink-muted/40 border-paper-border cursor-not-allowed opacity-60"
+                  : isRecording
+                  ? "bg-red-600 text-white border-red-700 animate-pulse"
+                  : "bg-paper-100 hover:bg-paper-200 border-paper-border text-ink"
+              }`}
+            >
+              {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-3.5 h-3.5" />}
+            </button>
 
             {/* Submit Button */}
             <button
@@ -419,13 +442,12 @@ export function AskTab({
 
             <div className="flex items-center gap-2">
               {/* Listen button for answer text */}
-              {sarvamEnabled && (
-                <ListenButton
-                  text={translatedAnswerText || currentAnswer.text}
-                  lang={lang}
-                  label="Listen"
-                />
-              )}
+              <ListenButton
+                text={translatedAnswerText || currentAnswer.text}
+                lang={lang}
+                label="Listen"
+                sarvamEnabled={sarvamEnabled}
+              />
 
               {/* Status Pill: Real status on answered thread item */}
               {currentAnswer.status === "answered" ? (
@@ -451,6 +473,26 @@ export function AskTab({
                   ? "Translating answer..."
                   : "AI translation. The English clause is the source."}
               </span>
+            </div>
+          )}
+
+          {/* Answer translation error notice */}
+          {answerTranslationError && (
+            <div
+              role="alert"
+              className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-ink flex items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                <span>{answerTranslationError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnswerTranslationError(null)}
+                className="text-[11px] font-mono text-ink-muted hover:text-ink flex-shrink-0"
+              >
+                Dismiss
+              </button>
             </div>
           )}
 

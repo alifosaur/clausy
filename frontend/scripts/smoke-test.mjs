@@ -369,6 +369,59 @@ async function main() {
     assert.strictEqual(resEmpty.valid, false, "Empty list must be rejected");
   });
 
+  // TEST 11: 16 kHz Mono WAV Audio Encoding (using real TypeScript module lib/audio.ts)
+  await runTest("Audio WAV Encoding: Real TypeScript Module Unit Tests", async () => {
+    const { encodeWav16BitMono } = await import("../lib/audio.ts");
+    assert.strictEqual(typeof encodeWav16BitMono, "function", "encodeWav16BitMono must be exported");
+
+    // Create 1000 audio samples
+    const sampleRate = 16000;
+    const samples = new Float32Array(1000);
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate);
+    }
+    samples[0] = 0.0;
+    samples[1] = 1.0;
+    samples[2] = -1.0;
+
+    const buffer = encodeWav16BitMono(samples, sampleRate);
+    assert.ok(buffer instanceof ArrayBuffer, "Must return ArrayBuffer");
+    assert.strictEqual(buffer.byteLength, 44 + samples.length * 2, "Buffer length must equal 44-byte header + 2 bytes per sample");
+
+    const view = new DataView(buffer);
+    const readString = (offset, length) => {
+      let str = "";
+      for (let i = 0; i < length; i++) {
+        str += String.fromCharCode(view.getUint8(offset + i));
+      }
+      return str;
+    };
+
+    // 1. Check RIFF header
+    assert.strictEqual(readString(0, 4), "RIFF", "Header must start with 'RIFF'");
+    assert.strictEqual(view.getUint32(4, true), 36 + samples.length * 2, "ChunkSize must be 36 + dataSize");
+    assert.strictEqual(readString(8, 4), "WAVE", "Format must be 'WAVE'");
+
+    // 2. Check fmt sub-chunk
+    assert.strictEqual(readString(12, 4), "fmt ", "Subchunk1ID must be 'fmt '");
+    assert.strictEqual(view.getUint32(16, true), 16, "Subchunk1Size must be 16 for PCM");
+    assert.strictEqual(view.getUint16(20, true), 1, "AudioFormat must be 1 (PCM)");
+    assert.strictEqual(view.getUint16(22, true), 1, "NumChannels must be 1 (mono)");
+    assert.strictEqual(view.getUint32(24, true), 16000, "SampleRate must be 16000");
+    assert.strictEqual(view.getUint32(28, true), 32000, "ByteRate must be 32000 (16000 * 1 * 2)");
+    assert.strictEqual(view.getUint16(32, true), 2, "BlockAlign must be 2");
+    assert.strictEqual(view.getUint16(34, true), 16, "BitsPerSample must be 16");
+
+    // 3. Check data sub-chunk
+    assert.strictEqual(readString(36, 4), "data", "Subchunk2ID must be 'data'");
+    assert.strictEqual(view.getUint32(40, true), samples.length * 2, "Subchunk2Size must be dataSize");
+
+    // 4. Check quantized samples
+    assert.strictEqual(view.getInt16(44, true), 0, "0.0 sample must quantize to 0");
+    assert.strictEqual(view.getInt16(46, true), 32767, "1.0 sample must quantize to 32767");
+    assert.strictEqual(view.getInt16(48, true), -32768, "-1.0 sample must quantize to -32768");
+  });
+
   console.log(`\n=========================================`);
   console.log(`  RESULTS: ${passed}/${total} TESTS PASSED  `);
   console.log(`=========================================\n`);

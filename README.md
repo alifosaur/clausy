@@ -262,7 +262,7 @@ All 60 checklist requirements from `PROJECT_RULES.md` are accounted for:
 | **42** | API error handling | Done | Typed `ApiError` layer in `lib/api.ts` with graceful fallback and user-friendly messages. |
 | **43** | Rate limiting + limits | Pending live verification | Client 10 MB / 5-page limits and backend SlowAPI IP rate limiting implemented; pending live load verification. |
 | **44** | Sessions | N/A | Ephemeral client React state only; wiped automatically upon tab closure. |
-| **45** | Testing (Eval set) | Done | 60 backend pytest tests, 10 frontend tests (8 smoke tests + 1 search unit test + 1 validation unit test using real TypeScript modules). Frontend smoke tests check standalone copies of the logic; backend tests mock the model. |
+| **45** | Testing (Eval set) | Done | 60 backend pytest tests, 11 frontend tests (8 smoke tests + 1 search unit test + 1 validation unit test + 1 audio WAV encoding unit test using real TypeScript modules). Frontend smoke tests check standalone copies of the logic; backend tests mock the model. |
 | **46** | Backups | N/A | Zero user data or documents retained. |
 | **47** | Custom domain | N/A | Standard Vercel deployment domain configured. |
 | **48** | Reliable deployment | Pending live verification | Render and Vercel build settings and deployment configurations prepared; pending live production deployment. |
